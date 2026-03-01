@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | v1.1.9</title>
+    <title>Global Data Project | v1.2.0</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #d0e2f3; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        #map { height: 100vh; width: 100vw; display: block; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #eef2f5; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        #map { height: 100vh; width: 100vw; background: #eef2f5; }
 
         /* Search Bar */
         #search-container {
@@ -16,17 +16,17 @@
         }
         #search-input {
             width: 100%; padding: 12px 20px; border-radius: 25px;
-            border: 1px solid #ccd6dd; background: rgba(255, 255, 255, 0.95);
-            color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #d1d9e0; background: rgba(255, 255, 255, 0.98);
+            color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
 
-        /* Popup */
-        .leaflet-popup-content-wrapper { background: #fff !important; color: #2c3e50 !important; border-radius: 8px !important; padding: 0 !important; }
+        /* Popup Styling */
+        .leaflet-popup-content-wrapper { background: #fff !important; color: #2c3e50 !important; border-radius: 8px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; padding: 0 !important; }
         .leaflet-popup-content { margin: 12px !important; width: 210px !important; }
         .pop-container { display: flex; flex-direction: column; gap: 8px; }
         .pop-top { display: flex; align-items: center; gap: 12px; }
         .pop-flag { width: 45px; height: 30px; border-radius: 3px; object-fit: cover; border: 1px solid #eee; }
-        .pop-country { font-size: 15px; font-weight: 700; margin: 0; }
+        .pop-country { font-size: 15px; font-weight: 700; margin: 0; color: #1a202c; }
         .pop-leader { font-size: 12px; color: #3182ce; font-weight: 600; }
         .pop-bottom { border-top: 1px solid #edf2f7; padding-top: 8px; font-size: 10px; display: flex; justify-content: space-between; color: #718096; }
 
@@ -36,27 +36,99 @@
 <body>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Find country, river, or leader...">
+    <input type="text" id="search-input" placeholder="Search country, ocean, or river...">
 </div>
 
 <div id="map"></div>
-<div id="version-tag">v1.1.9 - Rivers & Oceans</div>
+<div id="version-tag">v1.2.0 - Rivers & Oceans Fixed</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([25, 0], 2.3);
+    const map = L.map('map', { 
+        zoomSnap: 0.1, 
+        attributionControl: false 
+    }).setView([20, 0], 2.3);
     
-    // 1. PHYSICAL BASE: Shows detailed water, rivers, and topography
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
+    // THE ATLAS LAYER: Detailed terrain, rivers, and ocean names
+    // Using a reliable provider that renders geography correctly
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
     let worldData = {};
     let leaderData = {};
     let geoJsonLayer;
     const ts = new Date().getTime();
 
-    // 2. DATA LOAD
+    // Data Load
     Promise.all([
         fetch(`leaders.csv?v=${ts}`).then(res => res.text()),
         fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population&v=${ts}`).then(res => res.json())
     ]).then(([csvText, liveData]) => {
-        csvText
+        csvText.split(/\r?\n/).slice(1).forEach(row => {
+            const cols = row.split(',');
+            if (cols[0]) leaderData[cols[0].trim().toUpperCase()] = { name: cols[1], title: cols[2] };
+        });
+        liveData.forEach(c => worldData[c.cca3] = c);
+        loadBorders();
+    });
+
+    function loadBorders() {
+        fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson?v=${ts}`)
+            .then(res => res.json())
+            .then(geoData => {
+                geoJsonLayer = L.geoJSON(geoData, {
+                    style: { 
+                        fillColor: "#9dbb8a", // Earthy green
+                        weight: 1.5, 
+                        color: '#6e8b5e', 
+                        fillOpacity: 0.25 
+                    },
+                    onEachFeature: (feature, layer) => {
+                        layer.on('click', () => {
+                            const code = (feature.properties.iso_a3 || "").toUpperCase();
+                            const live = worldData[code];
+                            const leader = leaderData[code];
+                            if (live) {
+                                layer.bindPopup(`
+                                    <div class="pop-container">
+                                        <div class="pop-top">
+                                            <img src="${live.flags.png}" class="pop-flag">
+                                            <div class="pop-info">
+                                                <h2 class="pop-country">${live.name.common}</h2>
+                                                <span class="pop-leader">${leader ? leader.name : 'Data Pending'}</span>
+                                            </div>
+                                        </div>
+                                        <div class="pop-bottom">
+                                            <span>POPULATION</span>
+                                            <span style="color:#2d3748; font-weight:600">${live.population.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                `, { maxWidth: 220, closeButton: false }).openPopup();
+                            }
+                        });
+                        layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.5, fillColor: "#3182ce" }));
+                        layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.25, fillColor: "#9dbb8a" }));
+                    }
+                }).addTo(map);
+            });
+    }
+
+    // SEARCH
+    document.getElementById('search-input').addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase().trim();
+        if (!geoJsonLayer || query.length < 2) return;
+        geoJsonLayer.eachLayer(layer => {
+            const countryName = (layer.feature.properties.name || "").toLowerCase();
+            const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
+            const leaderName = leaderData[code] ? leaderData[code].name.toLowerCase() : "";
+            if (countryName.includes(query) || leaderName.includes(query)) {
+                map.flyTo(layer.getBounds().getCenter(), 3);
+                layer.fire('click');
+            }
+        });
+    });
+
+    // Final check for rendering
+    window.onload = () => { setTimeout(() => { map.invalidateSize(); }, 300); };
+</script>
+</body>
+</html>
