@@ -3,22 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.2.5</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <title>Global Atlas | v1.2.6</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
     <style>
-        /* Force the map to be visible regardless of container issues */
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #1a202c; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; display: block; background: #001529; }
+        /* Force container to fill Mac browser window */
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #001529; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; background: #aad3df; }
 
-        #search-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; width: 80%; max-width: 400px; }
-        #search-input { width: 100%; padding: 15px; border-radius: 30px; border: 2px solid #3182ce; box-shadow: 0 10px 20px rgba(0,0,0,0.4); outline: none; font-size: 16px; }
+        /* Search Bar Optimized for Mac Retina Displays */
+        #search-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; }
+        #search-input { 
+            width: 100%; padding: 14px 20px; border-radius: 25px; 
+            border: 1px solid #3182ce; background: rgba(255,255,255,0.95);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2); outline: none; font-size: 16px;
+            -webkit-appearance: none; /* Safari Fix */
+        }
 
-        #status-bar { position: absolute; bottom: 10px; left: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: #00ff00; padding: 5px 12px; font-family: monospace; font-size: 12px; border-radius: 5px; pointer-events: none; }
+        #status-bar { position: absolute; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #00ff00; padding: 6px 12px; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 4px; opacity: 0.9; }
     </style>
 </head>
 <body>
 
-<div id="status-bar">Diagnostic: Starting...</div>
+<div id="status-bar">Mac Diagnostic: Booting...</div>
 
 <div id="search-container">
     <input type="text" id="search-input" placeholder="Search Country, Leader, or Ocean...">
@@ -26,87 +35,55 @@
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-    const statusEl = document.getElementById('status-bar');
-    const setStatus = (txt) => statusEl.innerText = `Diagnostic: ${txt}`;
+    const status = document.getElementById('status-bar');
+    const setStatus = (msg) => { status.innerText = `Mac Diagnostic: ${msg}`; console.log(msg); };
 
-    // 1. Safety Check: Is Leaflet actually loaded?
-    if (typeof L === 'undefined') {
-        setStatus("CRITICAL ERROR: Leaflet library blocked by browser.");
-    } else {
-        setStatus("Engine Loaded. Building Map...");
-        init();
+    // 2. Start Map Immediately (Don't wait for data)
+    function startAtlas() {
+        try {
+            setStatus("Initializing Map Engine...");
+            
+            const map = L.map('map', {
+                zoomSnap: 0.1,
+                attributionControl: false,
+                trackResize: true
+            }).setView([20, 0], 2.3);
+
+            // 3. THE "ALL-IN-ONE" LAYER: High compatibility for Safari
+            // This contains Ocean Names, Country Labels, and Rivers
+            const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                crossOrigin: true // Critical for Mac local file testing
+            }).addTo(map);
+
+            tiles.on('tileload', () => setStatus("Map Visible. Syncing Rivers & Oceans..."));
+            tiles.on('tileerror', () => setStatus("Network Error: Tiles Blocked."));
+
+            loadIntelligence(map);
+
+            // Force Safari to redraw the map container
+            setTimeout(() => { map.invalidateSize(); }, 500);
+
+        } catch (e) {
+            setStatus("Critical Error: " + e.message);
+        }
     }
 
-    function init() {
-        // 2. Initialize Map with high reliability settings
-        const map = L.map('map', {
-            zoomSnap: 0.1,
-            attributionControl: false,
-            fadeAnimation: false // Disable animation to prevent "blanking" during load
-        }).setView([20, 0], 2.2);
-
-        // 3. The "Everything" Layer (Voyager - Includes Ocean Names, Rivers, and Borders)
-        const atlas = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            maxZoom: 19
-        }).addTo(map);
-
-        atlas.on('tileload', () => setStatus("Map Visible. Loading Data..."));
-        atlas.on('tileerror', () => setStatus("Error: Tile Server Blocked."));
-
-        // 4. Load Data (Leaders & GeoBorders)
-        let leaderData = {};
+    async function loadIntelligence(map) {
         let worldData = {};
+        let leaderData = {};
+        const ts = new Date().getTime();
 
-        // Async Data Loading
-        Promise.all([
-            fetch('leaders.csv').then(r => r.text()).catch(() => "error"),
-            fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population').then(r => r.json()).catch(() => [])
-        ]).then(([csv, api]) => {
-            // Parse CSV
-            if (csv !== "error") {
-                csv.split('\n').slice(1).forEach(row => {
-                    const parts = row.split(',');
-                    if (parts[0]) leaderData[parts[0].trim().toUpperCase()] = { name: parts[1] };
-                });
-            }
+        try {
+            // Load External Assets
+            const [csvRes, apiRes] = await Promise.all([
+                fetch(`leaders.csv?v=${ts}`).then(r => r.text()).catch(() => ""),
+                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population`).then(r => r.json()).catch(() => [])
+            ]);
 
-            // Parse API
-            api.forEach(c => worldData[c.cca3] = c);
-
-            // 5. Draw Borders
-            fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
-                .then(r => r.json())
-                .then(geo => {
-                    const geoLayer = L.geoJSON(geo, {
-                        style: { fillColor: "#4ade80", weight: 1, color: "white", fillOpacity: 0.15 },
-                        onEachFeature: (feature, layer) => {
-                            layer.on('click', () => {
-                                const code = feature.properties.iso_a3;
-                                const live = worldData[code];
-                                const lead = leaderData[code];
-                                if (live) {
-                                    layer.bindPopup(`<b>${live.name.common}</b><br>${lead ? lead.name : 'Data Pending'}`).openPopup();
-                                }
-                            });
-                        }
-                    }).addTo(map);
-                    setStatus("System Online. Ocean Labels Active.");
-                });
-        });
-
-        // 6. Search
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase();
-            if (query.length < 3) return;
-            // Basic search would go here, but focusing on visibility first
-        });
-
-        // Force a resize check (fixes the "Blue/Grey" partial load issue)
-        setTimeout(() => { map.invalidateSize(); }, 800);
-    }
-</script>
-</body>
-</html>
+            // Parse CSV for Starmer/Trump etc.
+            csvRes.split('\n').slice(1).forEach(row => {
+                const parts = row.split(',');
+                if (parts[0]) leaderData[parts[0].trim().toUpperCase()] = { name: parts[1] };
+            });
+            apiRes.forEach(c => worldData[c
