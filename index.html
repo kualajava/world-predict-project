@@ -3,87 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | v1.2.3</title>
+    <title>Global Atlas | v1.2.4</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: sans-serif; }
-        #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; background: #aad3df; }
+        /* 2. Critical: Force non-zero height for every possible container */
+        html, body { margin: 0; padding: 0; height: 100vh; width: 100vw; background: #001529; overflow: hidden; }
+        #map { height: 100%; width: 100%; background: #1a202c; position: absolute; top:0; left:0; }
 
-        /* Modern Search Bar */
-        #search-container {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 2000; width: 320px;
-        }
-        #search-input {
-            width: 100%; padding: 12px 20px; border-radius: 30px;
-            border: 2px solid #3182ce; background: white;
-            color: #2d3748; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
+        #search-container { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 300px; }
+        #search-input { width: 100%; padding: 12px; border-radius: 20px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); outline: none; }
 
-        /* Dashboard Popup */
-        .leaflet-popup-content-wrapper { border-radius: 8px !important; padding: 0 !important; box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important; }
-        .leaflet-popup-content { margin: 12px !important; width: 210px !important; }
-        .pop-container { display: flex; flex-direction: column; gap: 5px; }
-        .pop-top { display: flex; align-items: center; gap: 10px; }
-        .pop-flag { width: 40px; border: 1px solid #eee; }
-        .pop-country { font-size: 14px; font-weight: bold; margin: 0; color: #1a202c; }
-        .pop-leader { font-size: 12px; color: #3182ce; font-weight: 600; }
-        .pop-bottom { border-top: 1px solid #eee; padding-top: 5px; font-size: 10px; color: #718096; display: flex; justify-content: space-between; }
+        /* Status & Version */
+        #status-display { position: absolute; bottom: 10px; left: 10px; z-index: 9999; background: rgba(0,0,0,0.8); color: #00ff00; padding: 4px 10px; font-family: monospace; font-size: 11px; border-radius: 4px; border: 1px solid #333; }
+        #version { position: absolute; bottom: 10px; right: 10px; z-index: 9999; background: white; padding: 3px 8px; font-size: 10px; border-radius: 3px; font-weight: bold; }
 
-        /* Debug Logger */
-        #status-bar { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); color: #00ff00; padding: 5px 10px; font-family: monospace; font-size: 10px; z-index: 2000; border-radius: 4px; }
-        #version-tag { position: absolute; bottom: 10px; right: 10px; background: white; color: #3182ce; padding: 4px 10px; font-family: monospace; font-size: 10px; z-index: 2000; border: 1px solid #cbd5e0; border-radius: 5px; }
+        /* Popup Content */
+        .pop-card { width: 200px; font-family: sans-serif; }
+        .pop-head { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 5px; }
+        .pop-flag { width: 35px; height: 25px; object-fit: cover; border: 1px solid #ddd; }
+        .pop-name { font-weight: bold; font-size: 14px; margin: 0; }
+        .pop-lead { color: #3182ce; font-weight: 600; font-size: 12px; }
     </style>
 </head>
 <body>
 
+<div id="status-display">System: Booting...</div>
+<div id="version">v1.2.4</div>
+
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search Country, Leader, or Ocean...">
+    <input type="text" id="search-input" placeholder="Search Countries or Oceans...">
 </div>
 
 <div id="map"></div>
-<div id="status-bar">Initializing...</div>
-<div id="version-tag">v1.2.3 - Global Atlas</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-    const log = (msg) => { document.getElementById('status-bar').innerText = msg; console.log(msg); };
+    const status = document.getElementById('status-display');
+    const updateStatus = (msg) => { status.innerText = `Status: ${msg}`; console.log(msg); };
 
-    // 1. Setup Map
-    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.3);
-    
-    // 2. Add BASE LAYER (OpenStreetMap - very reliable)
-    const base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-    base.on('tileload', () => log("Base Map: Loaded"));
-    base.on('tileerror', () => log("Base Map: Error (Tiles blocked)"));
-
-    // 3. Add LABEL LAYER (Ocean and City Names)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', { zIndex: 1000 }).addTo(map);
-
+    let map, geoJsonLayer;
     let worldData = {};
     let leaderData = {};
-    let geoJsonLayer;
-    const ts = new Date().getTime();
 
-    // 4. Load Data
-    Promise.all([
-        fetch(`leaders.csv?v=${ts}`).then(r => r.text()),
-        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population`)
-    ]).then(async ([csv, apiRes]) => {
-        log("Data: Fetching CSV & API...");
-        // Parse CSV
-        csv.split('\n').slice(1).forEach(row => {
-            const [code, leader] = row.split(',');
-            if (code) leaderData[code.trim().toUpperCase()] = { name: leader };
-        });
-        // Parse API
-        const apiData = await apiRes.json();
-        apiData.forEach(c => worldData[c.cca3] = c);
+    // 4. THE BRUTE FORCE RENDERER
+    function initMap() {
+        updateStatus("Creating Canvas...");
         
-        loadBorders();
-        loadRivers();
-    });
+        // Initialize Map
+        map = L.map('map', { 
+            attributionControl: false,
+            zoomSnap: 0.1 
+        }).setView([20, 0], 2.2);
 
-    // 5. Load Rivers (Natural Earth Data)
-    function loadRivers() {
-        fetch('
+        // Standard Street Map (High Reliability)
+        const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // LABELS ON TOP (Oceans, Seas, Countries)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+            zIndex: 1000
+        }).addTo(map);
+
+        baseLayer.on('tileload', () => updateStatus("Map Active"));
+
+        loadData();
+    }
+
+    async function loadData() {
+        updateStatus("Fetching Intelligence...");
+        const ts = new Date().getTime();
+
+        try {
+            // Fetch CSV and
