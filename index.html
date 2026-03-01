@@ -3,41 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.3.3</title>
+    <title>Global Atlas | v2.3.4</title>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
-
-        /* Status Bar */
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #00ff00; padding: 8px 15px; font-size: 12px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; }
-
-        /* Counter Badge */
-        .intel-badge {
-            background: #f6e05e; border: 2px solid #000; border-radius: 50%;
-            color: #000; font-weight: 900; font-size: 11px;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 10px rgba(0,0,0,0.4);
-        }
-
-        /* Hover Card (Right) */
-        #hover-card { 
-            position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; 
-            padding: 15px; border-radius: 10px; display: none; width: 240px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #ddd; 
-        }
-
-        /* Intelligence Feed (Left) */
-        #intel-panel {
-            position: fixed; top: 80px; left: 20px; z-index: 9999;
-            width: 340px; max-height: 75vh;
-            background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #334155;
-            color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px);
-        }
+        .intel-badge { background: #f6e05e; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.4); }
+        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #ddd; }
+        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9999; width: 340px; max-height: 75vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-meta { font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 8px; }
@@ -68,92 +44,92 @@
 
 <div id="map"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
-    // 1. FORCE THE STATUS TO CHANGE IMMEDIATELY
-    const logBox = document.getElementById('log');
-    logBox.innerText = "Status: Script Active. Building...";
+    // IMMEDIATE EXECUTION CHECK
+    const lb = document.getElementById('log');
+    lb.innerHTML = "Status: Script Executed. Initializing...";
 
-    let map, geoLayer;
-    let predictions = [], worldData = {}, leaderData = {}, isLocked = false;
+    let map, geoLayer, isLocked = false;
+    let predictions = [], worldData = {}, leaderData = {};
 
-    // 2. Initialize Map Logic
-    try {
+    function start() {
         if (typeof L === 'undefined') {
-            logBox.innerText = "Status: CRITICAL ERROR - Leaflet library blocked.";
-        } else {
+            lb.innerHTML = "Status: ERROR - Leaflet library failed to load.";
+            return;
+        }
+
+        try {
             map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-            logBox.innerText = "Status: Map Container Built.";
-            
-            // 3. Sequential Load
+            lb.innerHTML = "Status: Map Canvas Ready.";
+
+            // Load shapes
             fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
                 .then(r => r.json())
                 .then(geo => {
                     geoLayer = L.geoJSON(geo, {
                         style: { fillColor: '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.6 },
-                        onEachFeature: onFeature
+                        onEachFeature: (f, layer) => {
+                            const name = f.properties.name;
+                            const code = f.properties.iso_a3;
+                            layer.on({
+                                mouseover: () => { updateHover(name, code); if(!isLocked) showIntel(name, false); },
+                                mouseout: () => { if(!isLocked) { document.getElementById('hover-card').style.display='none'; document.getElementById('intel-panel').style.display='none'; }},
+                                click: (e) => { L.DomEvent.stopPropagation(e); isLocked = true; updateHover(name, code); showIntel(name, true); }
+                            });
+                        }
                     }).addTo(map);
-                    logBox.innerText = "Status: Geography Loaded. Fetching Files...";
-                    loadIntel();
+                    lb.innerHTML = "Status: Land Shapes Drawn. Loading Intel...";
+                    loadData();
                 });
+        } catch (e) {
+            lb.innerHTML = "Status: Runtime Error: " + e.message;
         }
-    } catch(err) {
-        logBox.innerText = "Status: Boot Error: " + err.message;
     }
 
-    function onFeature(f, layer) {
-        const name = f.properties.name;
-        const code = f.properties.iso_a3;
-        layer.on({
-            mouseover: () => { updateHover(name, code); if(!isLocked) showIntel(name, false); },
-            mouseout: () => { if(!isLocked) { document.getElementById('hover-card').style.display='none'; document.getElementById('intel-panel').style.display='none'; }},
-            click: (e) => { L.DomEvent.stopPropagation(e); isLocked = true; updateHover(name, code); showIntel(name, true); }
-        });
-    }
-
-    function loadIntel() {
+    function loadData() {
         const ts = Date.now();
-        // Load CSVs and API simultaneously but non-blocking
+        // CSV 1
         fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
             const lines = txt.split('\n');
-            const headers = lines[0].split(',').map(h => h.trim());
+            const h = lines[0].split(',').map(x => x.trim());
             predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
-                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const obj = {};
-                headers.forEach((h, i) => obj[h] = values[i]?.replace(/"/g, '').trim() || "");
-                return obj;
+                const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const o = {};
+                h.forEach((key, i) => o[key] = v[i]?.replace(/"/g, '').trim() || "");
+                return o;
             });
             drawBadges();
-            logBox.innerText = "Status: Atlas Operational.";
-        }).catch(() => { logBox.innerText = "Status: Predictions CSV Missing."; });
+            lb.innerHTML = "Status: Atlas Fully Operational.";
+        }).catch(() => lb.innerHTML = "Status: CSV Error.");
 
+        // Leaders
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
             txt.split('\n').slice(1).forEach(row => {
                 const p = row.split(',');
                 if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
             });
-        }).catch(() => {});
+        });
 
+        // API
         fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,region,population`)
-            .then(r => r.json()).then(data => { data.forEach(c => worldData[c.cca3] = c); })
-            .catch(() => {});
+            .then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c));
     }
 
     function drawBadges() {
-        if(!geoLayer) return;
         geoLayer.eachLayer(layer => {
-            const name = layer.feature.properties.name;
+            const n = layer.feature.properties.name;
             const matches = predictions.filter(p => {
                 const c = (p["Country/Region"] || "").toLowerCase();
-                const m = name.toLowerCase();
+                const m = n.toLowerCase();
                 if ((m.includes("united states") || m === "usa") && (c.includes("usa") || c.includes("united states"))) return true;
                 return c.includes(m) || m.includes(c);
             });
             if (matches.length > 0) {
                 const center = layer.getBounds().getCenter();
-                L.marker(center, {
-                    icon: L.divIcon({ className: '', html: `<div class="intel-badge">${matches.length}</div>`, iconSize: [22, 22] })
-                }).addTo(map);
+                L.marker(center, { icon: L.divIcon({ className: '', html: `<div class="intel-badge">${matches.length}</div>`, iconSize: [22, 22] }) }).addTo(map);
             }
         });
     }
@@ -163,9 +139,8 @@
         document.getElementById('card-name').innerText = d ? d.name.common : name;
         document.getElementById('card-leader').innerText = leaderData[code]?.name || "N/A";
         document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
-        const flagImg = document.getElementById('card-flag');
-        if (d && d.flags) { flagImg.src = d.flags.png; flagImg.style.display = 'block'; }
-        else { flagImg.style.display = 'none'; }
+        const fl = document.getElementById('card-flag');
+        if (d && d.flags) { fl.src = d.flags.png; fl.style.display = 'block'; } else { fl.style.display = 'none'; }
         document.getElementById('hover-card').style.display = 'block';
     }
 
@@ -173,22 +148,4 @@
         const matches = predictions.filter(p => {
             const c = (p["Country/Region"] || "").toLowerCase();
             const m = name.toLowerCase();
-            if ((m.includes("united states") || m === "usa") && (c.includes("usa") || c.includes("united states"))) return true;
-            return c.includes(m) || m.includes(c);
-        });
-        if (matches.length === 0) return;
-        document.getElementById('intel-title').innerText = `${name} (${matches.length})`;
-        document.getElementById('intel-body').innerHTML = matches.map(p => `
-            <div class="pred-box">
-                <div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div>
-                <div class="pred-text">${p["Prediction Description"]}</div>
-            </div>
-        `).join('');
-        document.getElementById('intel-panel').style.display = 'block';
-        if (lock) isLocked = true;
-    }
-
-    function closeIntel() { isLocked = false; document.getElementById('intel-panel').style.display='none'; document.getElementById('hover-card').style.display='none'; }
-</script>
-</body>
-</html>
+            if ((m.includes("united states") || m === "usa") && (c.includes("usa
