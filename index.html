@@ -3,59 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.0.0</title>
+    <title>Global Atlas | v2.1.1</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; background: #aad3df; }
+        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; }
 
-        /* Status Bar - Major Version Branding */
-        #status-bar { 
-            position: fixed; bottom: 20px; left: 20px; z-index: 9999; 
-            background: rgba(0, 0, 0, 0.85); color: #00ff00; 
-            padding: 8px 14px; font-family: 'Courier New', monospace; font-size: 11px; 
-            border-radius: 6px; display: flex; gap: 15px; border: 1px solid #444;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        /* Left Hand Intelligence Panel */
+        #intel-panel {
+            position: fixed; top: 85px; left: 20px; z-index: 9999;
+            width: 320px; max-height: calc(100vh - 150px);
+            background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+            color: white; padding: 0; display: none; overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4);
         }
+        .intel-header { 
+            padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); 
+            background: rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 2;
+        }
+        .intel-title { font-size: 14px; font-weight: 800; color: #f6e05e; text-transform: uppercase; letter-spacing: 1px; }
+        .prediction-entry { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
+        .prediction-entry:hover { background: rgba(255,255,255,0.03); }
+        .pred-meta { font-size: 10px; color: #94a3b8; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+        .pred-cat { color: #68d391; font-weight: bold; background: rgba(104, 211, 145, 0.1); padding: 2px 6px; border-radius: 4px; }
+        .pred-desc { font-size: 13px; line-height: 1.6; color: #e2e8f0; }
+        .pred-author { font-size: 11px; color: #3182ce; margin-top: 8px; font-style: italic; opacity: 0.8; }
+
+        /* Core UI Components */
+        #status-bar { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: rgba(0, 0, 0, 0.85); color: #00ff00; padding: 8px 14px; font-family: monospace; font-size: 11px; border-radius: 6px; display: flex; gap: 15px; border: 1px solid #444; }
         .v-tag { color: #f6e05e; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
-
-        /* Search Container - Shifted for Zoom Control Clearance */
         #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 320px; }
-        #search-input { 
-            width: 100%; padding: 12px 22px; border-radius: 25px; border: none;
-            background: rgba(255, 255, 255, 0.98); box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
-            outline: none; font-size: 15px; transition: all 0.2s;
-        }
-        #search-input:focus { box-shadow: 0 4px 25px rgba(49, 130, 206, 0.3); width: 350px; }
-
-        /* Hover Dashboard */
-        #hover-card {
-            position: fixed; top: 20px; right: 20px; z-index: 9999;
-            width: 250px; background: rgba(255, 255, 255, 0.95); 
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-            padding: 18px; display: none; pointer-events: none; border: 1px solid rgba(255,255,255,0.3);
-        }
+        #search-input { width: 100%; padding: 12px 22px; border-radius: 25px; border: none; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15); outline: none; font-size: 15px; }
+        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; width: 250px; background: rgba(255, 255, 255, 0.98); border-radius: 14px; padding: 18px; display: none; pointer-events: none; border: 1px solid #eee; }
         .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
         .card-flag { width: 44px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0; }
         .card-country { font-size: 18px; font-weight: 700; color: #1a202c; margin: 0; }
-        .card-label { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 10px; }
+        .card-label { font-size: 10px; color: #718096; text-transform: uppercase; margin-top: 10px; }
         .card-val { font-size: 15px; font-weight: 600; color: #2d3748; }
-        .card-leader { color: #3182ce; }
     </style>
 </head>
 <body>
 
 <div id="status-bar">
     <span id="status-text">Atlas: Ready</span>
-    <span class="v-tag">v2.0.0</span>
+    <span class="v-tag">v2.1.1</span>
 </div>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search City, Leader, Ocean, State...">
+    <input type="text" id="search-input" placeholder="Search City, Leader, or Place...">
+</div>
+
+<div id="intel-panel">
+    <div class="intel-header">
+        <div class="intel-title" id="intel-country-name">Intelligence Feed</div>
+    </div>
+    <div id="intel-content"></div>
 </div>
 
 <div id="hover-card">
@@ -64,7 +70,7 @@
         <h2 class="card-country" id="name">Country</h2>
     </div>
     <div class="card-label">National Leader</div>
-    <div class="card-val card-leader" id="leader">Leader Name</div>
+    <div class="card-val" id="leader" style="color:#3182ce">Leader Name</div>
     <div class="card-label">Total Population</div>
     <div class="card-val" id="pop">0</div>
 </div>
@@ -74,77 +80,82 @@
 <script>
     const statusText = document.getElementById('status-text');
     const card = document.getElementById('hover-card');
-    let map, geoJsonLayer, worldData = {}, leaderData = {};
-    let searchTimeout;
+    const intelPanel = document.getElementById('intel-panel');
+    const intelContent = document.getElementById('intel-content');
+    const intelTitle = document.getElementById('intel-country-name');
+    
+    let map, geoJsonLayer, worldData = {}, leaderData = {}, predictions = [];
 
-    // Political Color Palette
     const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
 
+    // Smart Matcher Dictionary
+    const aliasMap = {
+        "USA": "United States of America",
+        "United States": "United States of America",
+        "UK": "United Kingdom",
+        "UAE": "United Arab Emirates",
+        "Russia": "Russian Federation"
+    };
+
     function init() {
-        try {
-            map = L.map('map', { 
-                zoomSnap: 0.1, 
-                attributionControl: false,
-                worldCopyJump: true,
-                fadeAnimation: false 
-            }).setView([20, 0], 2.2);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                crossOrigin: true
-            }).addTo(map);
-
-            loadAtlasData();
-        } catch (e) {
-            statusText.innerText = "Atlas: Boot Error";
-        }
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false, worldCopyJump: true, fadeAnimation: false }).setView([20, 0], 2.2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { crossOrigin: true }).addTo(map);
+        loadData();
     }
 
-    async function loadAtlasData() {
+    async function loadData() {
         const ts = new Date().getTime();
         try {
-            const [csvRes, apiRes] = await Promise.all([
+            const [csvLeaders, apiCountries, csvPredictions] = await Promise.all([
                 fetch(`leaders.csv?v=${ts}`).then(r => r.text()),
-                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json())
+                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json()),
+                fetch(`predictions.csv?v=${ts}`).then(r => r.text()) // Updated to predictions.csv
             ]);
 
-            csvRes.split('\n').slice(1).forEach(row => {
+            csvLeaders.split('\n').slice(1).forEach(row => {
                 const p = row.split(',');
                 if (p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
             });
-            apiRes.forEach(c => worldData[c.cca3] = c);
+            apiCountries.forEach(c => worldData[c.cca3] = c);
+
+            // Robust CSV Parsing
+            const lines = csvPredictions.split('\n');
+            const headers = lines[0].split(',');
+            predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const obj = {};
+                headers.forEach((h, i) => obj[h.trim()] = values[i]?.replace(/"/g, '').trim());
+                return obj;
+            });
 
             const geo = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson').then(r => r.json());
 
             geoJsonLayer = L.geoJSON(geo, {
-                style: (f) => ({
-                    fillColor: colors[worldData[f.properties.iso_a3]?.region] || '#cbd5e0',
-                    weight: 1, color: "white", fillOpacity: 0.4
-                }),
+                style: (f) => ({ fillColor: colors[worldData[f.properties.iso_a3]?.region] || '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.4 }),
                 onEachFeature: (f, l) => {
                     l.on({
                         mouseover: (e) => {
                             e.target.setStyle({ fillOpacity: 0.8 });
-                            updateCard(f.properties.iso_a3);
+                            updateUI(f.properties.iso_a3, f.properties.name);
                         },
                         mouseout: (e) => {
                             e.target.setStyle({ fillOpacity: 0.4 });
                             card.style.display = 'none';
+                            intelPanel.style.display = 'none';
                         }
                     });
                 }
             }).addTo(map);
 
             statusText.innerText = "Atlas: Online";
-            setTimeout(() => { map.invalidateSize(); }, 500);
-
-        } catch (e) {
-            statusText.innerText = "Atlas: Data Error";
-        }
+        } catch (e) { statusText.innerText = "Atlas: Sync Error"; }
     }
 
-    function updateCard(code) {
+    function updateUI(code, mapName) {
         const d = worldData[code];
         const lead = leaderData[code];
+        
+        // Right Card
         if (d) {
             document.getElementById('name').innerText = d.name.common;
             document.getElementById('leader').innerText = lead ? lead.name : "Data Pending";
@@ -152,48 +163,21 @@
             document.getElementById('pop').innerText = d.population.toLocaleString();
             card.style.display = 'block';
         }
-    }
 
-    // Global Search Logic
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        const term = e.target.value.trim();
-        clearTimeout(searchTimeout);
-        if (term.length < 3) return;
-
-        searchTimeout = setTimeout(() => {
-            let foundLocally = false;
+        // Left Intelligence Panel (Using Smart Matching)
+        const countryPreds = predictions.filter(p => {
+            const csvLoc = p["Country/Region"] || "";
+            const normalizedMapName = mapName.toLowerCase();
+            const normalizedCSVLoc = csvLoc.toLowerCase();
             
-            // Local Search
-            geoJsonLayer.eachLayer(layer => {
-                const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
-                const country = (layer.feature.properties.name || "").toLowerCase();
-                const lead = (leaderData[code]?.name || "").toLowerCase();
+            return normalizedCSVLoc.includes(normalizedMapName) || 
+                   normalizedMapName.includes(normalizedCSVLoc) ||
+                   (aliasMap[csvLoc] && aliasMap[csvLoc].toLowerCase() === normalizedMapName);
+        });
 
-                if (country.includes(term.toLowerCase()) || lead.includes(term.toLowerCase())) {
-                    map.flyTo(layer.getBounds().getCenter(), 4);
-                    updateCard(code);
-                    foundLocally = true;
-                }
-            });
-
-            // Global Search (Nominatim)
-            if (!foundLocally) {
-                statusText.innerText = "Atlas: Searching Globe...";
-                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(term)}&limit=1`)
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data && data.length > 0) {
-                            map.flyTo([data[0].lat, data[0].lon], 7);
-                            statusText.innerText = "Atlas: Online";
-                        } else {
-                            statusText.innerText = "Atlas: No Result";
-                        }
-                    });
-            }
-        }, 600);
-    });
-
-    window.onload = init;
-</script>
-</body>
-</html>
+        if (countryPreds.length > 0) {
+            intelTitle.innerText = `${mapName} Insights`;
+            intelContent.innerHTML = countryPreds.map(p => `
+                <div class="prediction-entry">
+                    <div class="pred-meta">
+                        <span>${p["Date of Premonition"]}</span>
