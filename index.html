@@ -1,31 +1,45 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | Phase 2</title>
+    <title>Global Data Project</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; background: #0b0e14; }
+        body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
         #map { height: 100vh; width: 100vw; background: #0b0e14; }
         
-        /* Custom styling for the map borders */
-        .country-style {
-            transition: all 0.2s;
+        /* Version Stamp Styling */
+        #version-tag {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #555;
+            padding: 3px 8px;
+            font-family: monospace;
+            font-size: 10px;
+            border-radius: 4px;
+            z-index: 1000;
+            pointer-events: none;
+            border: 1px solid #333;
         }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
+<div id="version-tag">v1.0.3 - Build: 2026-03-01</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Initialize map
+    // Initialize map without a fixed zoom/center so fitBounds can take over
     const map = L.map('map', {
-        zoomSnap: 0.1,         // Allows for much smoother, fractional zooming
-        attributionControl: false // Cleans up the bottom right corner
-    }).setView([20, 0], 2);
+        zoomSnap: 0.1,
+        attributionControl: false,
+        maxBounds: [[-90, -180], [90, 180]], // Prevents user from scrolling into grey void
+        maxBoundsViscosity: 1.0
+    });
 
     const geojsonStyle = {
         fillColor: "#1a1f26",
@@ -52,8 +66,8 @@
                 }
             }).addTo(map);
 
-            // MAGIC LINE: This forces the map to zoom in until the land hits the edges
-            map.fitBounds(worldLayer.getBounds(), { padding: [10, 10] });
+            // This forces the landmass to fill the available screen width
+            map.fitBounds(worldLayer.getBounds());
         });
 </script>
 </body>
