@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.3.5</title>
+    <title>Global Atlas | v1.3.6</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -20,11 +20,10 @@
         }
         .v-tag { color: #3182ce; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
 
-        /* MOVED RIGHT: 80px from left to clear zoom buttons */
-        #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 280px; }
+        #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 320px; }
         #search-input { 
             width: 100%; padding: 12px 20px; border-radius: 25px; border: none;
-            background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none; font-size: 15px;
+            background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.15); outline: none; font-size: 15px;
         }
 
         #hover-card {
@@ -43,12 +42,12 @@
 <body>
 
 <div id="status-bar">
-    <span id="status-text">Ready...</span>
-    <span class="v-tag">v1.3.5</span>
+    <span id="status-text">System: Ready</span>
+    <span class="v-tag">v1.3.6</span>
 </div>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search Country or Leader...">
+    <input type="text" id="search-input" placeholder="Search Place, Leader, or Landmark...">
 </div>
 
 <div id="hover-card">
@@ -68,6 +67,7 @@
     const statusText = document.getElementById('status-text');
     const card = document.getElementById('hover-card');
     let map, geoJsonLayer, worldData = {}, leaderData = {};
+    let searchTimeout;
 
     function boot() {
         try {
@@ -84,7 +84,7 @@
 
             loadContent();
         } catch (e) {
-            statusText.innerText = "Error: Engine Fail";
+            statusText.innerText = "System: Engine Fail";
         }
     }
 
@@ -126,11 +126,11 @@
                 }
             }).addTo(map);
 
-            statusText.innerText = "Online";
+            statusText.innerText = "System: Online";
             setTimeout(() => { map.invalidateSize(); }, 400);
 
         } catch (e) {
-            statusText.innerText = "Offline Data";
+            statusText.innerText = "System: Offline Data";
         }
     }
 
@@ -146,20 +146,46 @@
         }
     }
 
+    // HYBRID SEARCH ENGINE (Local + Global)
     document.getElementById('search-input').addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase().trim();
-        if (term.length < 3 || !geoJsonLayer) return;
+        const term = e.target.value.trim();
+        clearTimeout(searchTimeout);
 
-        geoJsonLayer.eachLayer(layer => {
-            const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
-            const countryName = (layer.feature.properties.name || "").toLowerCase();
-            const leadName = (leaderData[code]?.name || "").toLowerCase();
+        if (term.length < 3) return;
 
-            if (countryName.includes(term) || leadName.includes(term)) {
-                map.flyTo(layer.getBounds().getCenter(), 4);
-                display(code);
+        // Debounce to prevent hitting the API too many times per second
+        searchTimeout = setTimeout(() => {
+            let foundLocally = false;
+
+            // 1. Search Locally (Countries/Leaders)
+            geoJsonLayer.eachLayer(layer => {
+                const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
+                const countryName = (layer.feature.properties.name || "").toLowerCase();
+                const leadName = (leaderData[code]?.name || "").toLowerCase();
+
+                if (countryName.includes(term.toLowerCase()) || leadName.includes(term.toLowerCase())) {
+                    map.flyTo(layer.getBounds().getCenter(), 4);
+                    display(code);
+                    foundLocally = true;
+                }
+            });
+
+            // 2. Search Globally (Cities, States, Oceans, Mountains)
+            if (!foundLocally) {
+                statusText.innerText = "System: Searching Globe...";
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(term)}&limit=1`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data && data.length > 0) {
+                            const result = data[0];
+                            map.flyTo([result.lat, result.lon], 6);
+                            statusText.innerText = "System: Online";
+                        } else {
+                            statusText.innerText = "System: Place Not Found";
+                        }
+                    });
             }
-        });
+        }, 600);
     });
 
     window.onload = boot;
