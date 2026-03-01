@@ -3,66 +3,168 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.1.7</title>
+    <title>Global Atlas | v2.1.8</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; background: #aad3df; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: sans-serif; }
+        #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
 
-        /* Left Panel - Scrollable & Persistent */
+        /* Left Panel */
         #intel-panel {
             position: fixed; top: 85px; left: 20px; z-index: 9999;
             width: 350px; max-height: calc(100vh - 150px);
-            background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
-            color: white; padding: 0; display: none; overflow-y: auto;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5); pointer-events: auto;
+            color: white; display: none; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
         }
-        
-        .intel-header { 
-            padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); 
-            background: rgba(30, 41, 59, 0.95); position: sticky; top: 0; z-index: 10;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .intel-title { font-size: 13px; font-weight: 800; color: #f6e05e; text-transform: uppercase; letter-spacing: 1.5px; }
-        #close-intel { background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        #close-intel:hover { background: #fc8181; }
+        .intel-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); background: #1e293b; position: sticky; top: 0; display: flex; justify-content: space-between; align-items: center; }
+        .intel-title { font-size: 13px; font-weight: 800; color: #f6e05e; text-transform: uppercase; }
+        #close-intel { background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; }
 
-        .prediction-entry { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); transition: background 0.3s; }
-        .prediction-entry:hover { background: rgba(255,255,255,0.02); }
-        .pred-meta { font-size: 10px; color: #94a3b8; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .pred-cat { color: #68d391; font-weight: bold; background: rgba(104, 211, 145, 0.1); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(104, 211, 145, 0.2); }
-        .pred-desc { font-size: 13px; line-height: 1.7; color: #f1f5f9; }
-        .pred-author { font-size: 11px; color: #3182ce; margin-top: 10px; font-style: italic; opacity: 0.8; }
+        .prediction-entry { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .pred-meta { font-size: 10px; color: #94a3b8; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .pred-cat { color: #68d391; font-weight: bold; }
+        .pred-desc { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
 
-        /* UI Controls */
-        #status-bar { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: rgba(0,0,0,0.85); color: #00ff00; padding: 8px 14px; font-family: monospace; font-size: 11px; border-radius: 6px; display: flex; gap: 15px; border: 1px solid #444; }
-        #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 320px; }
-        #search-input { width: 100%; padding: 12px 22px; border-radius: 25px; border: none; background: white; box-shadow: 0 4px 25px rgba(0,0,0,0.2); outline: none; font-size: 15px; }
-        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; width: 260px; background: white; border-radius: 14px; padding: 20px; display: none; pointer-events: none; border: 1px solid #eee; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        
-        #intel-panel::-webkit-scrollbar { width: 6px; }
-        #intel-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        /* UI Elements */
+        #status-bar { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: rgba(0,0,0,0.8); color: #00ff00; padding: 8px 12px; font-size: 11px; border-radius: 6px; font-family: monospace; }
+        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; width: 240px; background: white; border-radius: 12px; padding: 15px; display: none; border: 1px solid #eee; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<div id="status-bar"><span id="status-text">Atlas: Ready</span><span style="color:#f6e05e; font-weight:bold; border-left:1px solid #444; padding-left:15px;">v2.1.7</span></div>
-
-<div id="search-container"><input type="text" id="search-input" placeholder="Search Place or Leader..."></div>
+<div id="status-bar">Atlas: Initializing... (v2.1.8)</div>
 
 <div id="intel-panel">
     <div class="intel-header">
-        <div class="intel-title" id="intel-country-name">Intelligence Feed</div>
-        <button id="close-intel" title="Close">✕</button>
+        <div class="intel-title" id="intel-country-name">Intelligence</div>
+        <button id="close-intel">✕</button>
     </div>
     <div id="intel-content"></div>
 </div>
 
 <div id="hover-card">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <img src="" id="flag" style="width:44px; height:30px; object-fit:cover; border-radius:4px; border:1px solid #eee;">
-        <h2 id="name" style="font-size:18px; font-weight:700;
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+        <img src="" id="flag" style="width:35px; height:24px; border:1px solid #ddd;">
+        <h2 id="name" style="font-size:16px; margin:0;"></h2>
+    </div>
+    <div style="font-size:10px; color:gray;">LEADER</div>
+    <div id="leader" style="font-size:14px; font-weight:bold; color:#3182ce;"></div>
+</div>
+
+<div id="map"></div>
+
+<script>
+    const statusText = document.getElementById('status-bar');
+    const card = document.getElementById('hover-card');
+    const intelPanel = document.getElementById('intel-panel');
+    const intelContent = document.getElementById('intel-content');
+    const intelTitle = document.getElementById('intel-country-name');
+    
+    let worldData = {}, leaderData = {}, predictions = [], isLocked = false;
+
+    // --- 1. INSTANT MAP BOOT ---
+    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+
+    // --- 2. ASYNC BACKGROUND LOADING ---
+    async function startAtlas() {
+        const ts = new Date().getTime();
+        
+        // Load API Data
+        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,region`)
+            .then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c))
+            .catch(() => console.log("API Fail"));
+
+        // Load Leaders
+        fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            txt.split('\n').slice(1).forEach(row => {
+                const p = row.split(',');
+                if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+            });
+        }).catch(() => console.log("CSV Leaders Fail"));
+
+        // Load Predictions
+        fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            const lines = txt.split('\n');
+            const headers = lines[0].split(',');
+            predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const obj = {};
+                headers.forEach((h, i) => obj[h.trim()] = values[i]?.replace(/"/g, '').trim() || "");
+                return obj;
+            });
+        }).catch(() => console.log("CSV Predictions Fail"));
+
+        // Load GeoJSON and Draw Land
+        fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+            .then(r => r.json()).then(geo => {
+                L.geoJSON(geo, {
+                    style: (f) => {
+                        const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
+                        const region = worldData[f.properties.iso_a3]?.region;
+                        return { fillColor: colors[region] || '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.4 };
+                    },
+                    onEachFeature: (f, l) => {
+                        l.on({
+                            mouseover: () => { if(!isLocked) updateUI(f.properties.iso_a3, f.properties.name); },
+                            mouseout: () => { if(!isLocked) { card.style.display = 'none'; intelPanel.style.display = 'none'; }},
+                            click: (e) => { isLocked = true; updateUI(f.properties.iso_a3, f.properties.name); L.DomEvent.stopPropagation(e); }
+                        });
+                    }
+                }).addTo(map);
+                statusText.innerText = "Atlas: Ready";
+            });
+    }
+
+    function updateUI(code, mapName) {
+        const d = worldData[code];
+        if (d) {
+            document.getElementById('name').innerText = d.name.common;
+            document.getElementById('leader').innerText = leaderData[code]?.name || "N/A";
+            document.getElementById('flag').src = d.flags.png;
+            card.style.display = 'block';
+        }
+
+        const m = mapName.toLowerCase();
+        const filtered = predictions.filter(p => {
+            const c = (p["Country/Region"] || "").toLowerCase();
+            // High-reliability USA matching
+            if (m.includes("united states") || m === "usa") {
+                return c.includes("usa") || c.includes("united states") || c.includes("america");
+            }
+            return c.includes(m) || m.includes(c);
+        });
+
+        if (filtered.length > 0) {
+            intelTitle.innerText = `${mapName} Insights`;
+            intelContent.innerHTML = filtered.map(p => `
+                <div class="prediction-entry">
+                    <div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div>
+                    <div class="pred-desc">${p["Prediction Description"]}</div>
+                </div>
+            `).join('');
+            intelPanel.style.display = 'block';
+        } else if (!isLocked) { intelPanel.style.display = 'none'; }
+    }
+
+    // Ocean Click = Global Data
+    map.on('click', () => {
+        isLocked = true;
+        const global = predictions.filter(p => (p["Country/Region"] || "").toLowerCase().includes("global"));
+        if(global.length > 0) {
+            intelTitle.innerText = "Global Intelligence";
+            intelContent.innerHTML = global.map(p => `<div class="prediction-entry"><div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div><div class="pred-desc">${p["Prediction Description"]}</div></div>`).join('');
+            intelPanel.style.display = 'block';
+        }
+    });
+
+    document.getElementById('close-intel').onclick = () => { isLocked = false; intelPanel.style.display = 'none'; card.style.display = 'none'; };
+
+    startAtlas();
+</script>
+</body>
+</html>
