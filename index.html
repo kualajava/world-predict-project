@@ -1,83 +1,42 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | v1.0.9</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; background: #0b0e14; }
-        .popup-content { font-family: sans-serif; text-align: center; color: #333; min-width: 180px; }
-        .popup-flag { width: 100px; border-radius: 4px; margin-bottom: 10px; }
-        #version-tag { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: #00ff00; padding: 4px 10px; font-family: monospace; font-size: 10px; border-radius: 4px; z-index: 1000; border: 1px solid #333; }
-    </style>
-</head>
-<body>
+<style>
+    /* 1. Global Map Styling */
+    body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
+    #map { height: 100vh; width: 100vw; background: #05070a; }
 
-<div id="map"></div>
-<div id="version-tag">v1.0.9 - Recovery Mode</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([25, 0], 2.3);
-    let worldData = {};
-    let leaderData = {};
-
-    // 1. Load the Map immediately so you don't have a blank screen
-    fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
-        .then(res => res.json())
-        .then(geoData => {
-            L.geoJSON(geoData, {
-                style: { fillColor: "#1a1f26", weight: 1, color: '#4a5568', fillOpacity: 0.7 },
-                onEachFeature: setupFeature
-            }).addTo(map);
-        });
-
-    // 2. Load World API Data in the background
-    fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies')
-        .then(res => res.json())
-        .then(data => { data.forEach(c => worldData[c.cca3] = c); });
-
-    // 3. Load Leaders CSV in the background
-    fetch('leaders.csv')
-        .then(res => res.ok ? res.text() : "")
-        .then(csvText => {
-            csvText.split(/\r?\n/).slice(1).forEach(row => {
-                const [code, leader, title] = row.split(',');
-                if (code) leaderData[code.trim().toUpperCase()] = { leader, title };
-            });
-        }).catch(e => console.log("CSV not ready yet"));
-
-    function setupFeature(feature, layer) {
-        layer.on('click', () => {
-            const code = (feature.properties.iso_a3 || "").toUpperCase();
-            const live = worldData[code];
-            const leaderInfo = leaderData[code];
-
-            if (live) {
-                const pop = live.population.toLocaleString();
-                const leader = leaderInfo ? leaderInfo.leader : "Data Pending";
-                const title = leaderInfo ? leaderInfo.title : "Leader";
-                
-                layer.bindPopup(`
-                    <div class="popup-content">
-                        <img src="${live.flags.png}" class="popup-flag">
-                        <h2>${live.name.common}</h2>
-                        <p><strong>${title}:</strong> ${leader}</p>
-                        <p>Population: ${pop}</p>
-                    </div>
-                `).openPopup();
-            } else {
-                layer.bindPopup("<h3>" + feature.properties.name + "</h3><p>Loading live data...</p>").openPopup();
-            }
-        });
-
-        layer.on({
-            mouseover: (e) => e.target.setStyle({ fillOpacity: 1, fillColor: "#3182ce" }),
-            mouseout: (e) => e.target.setStyle({ fillOpacity: 0.7, fillColor: "#1a1f26" })
-        });
+    /* 2. Professional Dashboard Popup Styling */
+    .leaflet-popup-content-wrapper {
+        background: rgba(20, 27, 38, 0.95) !important; /* Deep dark blue-grey */
+        color: #ffffff !important;
+        border-radius: 12px !important;
+        padding: 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+        backdrop-filter: blur(8px);
     }
-</script>
-</body>
-</html>
+    .leaflet-popup-tip {
+        background: rgba(20, 27, 38, 0.95) !important;
+    }
+    .leaflet-popup-content {
+        margin: 0 !important;
+        width: 240px !important;
+    }
+
+    /* 3. Dashboard Content Layout */
+    .db-card { padding: 16px; font-family: 'Inter', -apple-system, sans-serif; }
+    .db-header { 
+        display: flex; align-items: center; gap: 12px; margin-bottom: 15px; 
+        border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;
+    }
+    .db-flag { width: 45px; height: 30px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); }
+    .db-country { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; margin: 0; color: #fff; }
+    
+    .db-stat-row { display: flex; flex-direction: column; gap: 10px; }
+    .db-item { display: flex; justify-content: space-between; align-items: baseline; }
+    .db-label { color: #8a94a6; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+    .db-value { color: #e2e8f0; font-size: 13px; font-weight: 500; }
+    .db-leader { color: #4fd1c5; font-weight: 600; } /* Teal accent for the leader */
+    
+    #version-tag { 
+        position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); 
+        color: #4fd1c5; padding: 4px 10px; font-family: monospace; font-size: 10px; 
+        border-radius: 6px; z-index: 1000; border: 1px solid rgba(
