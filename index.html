@@ -9,7 +9,6 @@
         body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
         #map { height: 100vh; width: 100vw; background: #0b0e14; }
         
-        /* Version Stamp Styling */
         #version-tag {
             position: absolute;
             bottom: 10px;
@@ -29,15 +28,15 @@
 <body>
 
 <div id="map"></div>
-<div id="version-tag">v1.0.3 - Build: 2026-03-01</div>
+<div id="version-tag">v1.0.4 - Focused View</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Initialize map without a fixed zoom/center so fitBounds can take over
     const map = L.map('map', {
         zoomSnap: 0.1,
         attributionControl: false,
-        maxBounds: [[-90, -180], [90, 180]], // Prevents user from scrolling into grey void
+        // Allow some vertical movement but keep it contained
+        maxBounds: [[-85, -200], [85, 200]],
         maxBoundsViscosity: 1.0
     });
 
@@ -66,8 +65,10 @@
                 }
             }).addTo(map);
 
-            // This forces the landmass to fill the available screen width
-            map.fitBounds(worldLayer.getBounds());
+            // MANUALLY SET VIEW: This zooms in and ignores the empty space of Antarctica
+            // [Latitude, Longitude], Zoom Level
+            // Adjust the '2.5' higher to zoom in more, or '20' higher/lower to move up/down
+            map.setView([25, 0], 2.3); 
         });
 </script>
 </body>
