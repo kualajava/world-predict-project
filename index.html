@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.3.2</title>
+    <title>Global Atlas | v2.3.3</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
 
-        /* Status Bar - Bottom Left */
-        #log { position: fixed; bottom: 15px; left: 15px; z-index: 9999; background: rgba(0,0,0,0.85); color: #4ade80; padding: 6px 12px; font-size: 11px; border-radius: 4px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
+        /* Status Bar */
+        #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #00ff00; padding: 8px 15px; font-size: 12px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; }
 
-        /* Badge Style */
+        /* Counter Badge */
         .intel-badge {
             background: #f6e05e; border: 2px solid #000; border-radius: 50%;
             color: #000; font-weight: 900; font-size: 11px;
@@ -36,7 +36,7 @@
             width: 340px; max-height: 75vh;
             background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #334155;
             color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(10px);
         }
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -47,7 +47,7 @@
 </head>
 <body>
 
-<div id="log">Status: Loading Engine...</div>
+<div id="log">Status: Awaiting Script...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -60,7 +60,7 @@
 
 <div id="intel-panel">
     <div class="intel-header">
-        <span id="intel-title" style="color:#f6e05e; font-weight:800; font-size:12px; text-transform:uppercase; letter-spacing:0.5px;">Intelligence Feed</span>
+        <span id="intel-title" style="color:#f6e05e; font-weight:800; font-size:12px; text-transform:uppercase;">Intel Feed</span>
         <button onclick="closeIntel()" style="background:rgba(255,255,255,0.1); border:none; color:white; cursor:pointer; width:26px; height:26px; border-radius:50%;">✕</button>
     </div>
     <div id="intel-body"></div>
@@ -69,8 +69,46 @@
 <div id="map"></div>
 
 <script>
-    // 1. Setup Status Logger
-    const logger = document.getElementById('log');
-    const updateLog = (m) => { if(logger) logger.innerText = "Status: " + m; };
+    // 1. FORCE THE STATUS TO CHANGE IMMEDIATELY
+    const logBox = document.getElementById('log');
+    logBox.innerText = "Status: Script Active. Building...";
 
-    // 2
+    let map, geoLayer;
+    let predictions = [], worldData = {}, leaderData = {}, isLocked = false;
+
+    // 2. Initialize Map Logic
+    try {
+        if (typeof L === 'undefined') {
+            logBox.innerText = "Status: CRITICAL ERROR - Leaflet library blocked.";
+        } else {
+            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+            logBox.innerText = "Status: Map Container Built.";
+            
+            // 3. Sequential Load
+            fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+                .then(r => r.json())
+                .then(geo => {
+                    geoLayer = L.geoJSON(geo, {
+                        style: { fillColor: '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.6 },
+                        onEachFeature: onFeature
+                    }).addTo(map);
+                    logBox.innerText = "Status: Geography Loaded. Fetching Files...";
+                    loadIntel();
+                });
+        }
+    } catch(err) {
+        logBox.innerText = "Status: Boot Error: " + err.message;
+    }
+
+    function onFeature(f, layer) {
+        const name = f.properties.name;
+        const code = f.properties.iso_a3;
+        layer.on({
+            mouseover: () => { updateHover(name, code); if(!isLocked) showIntel(name, false); },
+            mouseout: () => { if(!isLocked) { document.getElementById('hover-card').style.display='none'; document.getElementById('intel-panel').style.display='none'; }},
+            click: (e) => { L.DomEvent.stopPropagation(e); isLocked = true; updateHover(name, code); showIntel(name, true); }
+        });
+    }
+
+    function load
