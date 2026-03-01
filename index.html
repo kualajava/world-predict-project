@@ -3,17 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.3.7</title>
+    <title>Global Atlas | v2.3.8</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
         
+        /* UI Elements */
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
         #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #ddd; }
         #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9998; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.95); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
         
+        /* Search Box Customization */
+        .leaflet-control-geocoder { border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none !important; margin-top: 20px !important; margin-left: 20px !important; }
+        .leaflet-control-geocoder-icon { background-color: white !important; border-radius: 8px !important; }
+
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
@@ -22,7 +32,7 @@
 </head>
 <body>
 
-<div id="log">Status: Booting Detailed Atlas...</div>
+<div id="log">Status: Initializing Universal Search...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -43,29 +53,42 @@
 
 <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     const lb = document.getElementById('log');
     let map, geoLayer, isLocked = false;
     let predictions = [], worldData = {}, leaderData = {};
 
     function init() {
-        lb.innerText = "Status: Rendering Topography...";
+        lb.innerText = "Status: Loading Search Engine...";
         
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         
-        // 1. BASE TERRAIN (The Mountains/Greenery)
+        // 1. BASE TERRAIN (The Mountains)
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 8
         }).addTo(map);
 
         // 2. REFERENCE OVERLAY (Borders, Cities, Rivers, Names)
-        // This sits on TOP of the terrain but BELOW our interaction layer
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            opacity: 0.8
+            opacity: 0.85
         }).addTo(map);
 
-        // 3. INTERACTIVE LAYER (Hidden borders for clicking/hovering)
+        // 3. UNIVERSAL SEARCH BAR
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "Search country, river, city...",
+            errorMessage: "Location not found."
+        })
+        .on('markgeocode', function(e) {
+            const bbox = e.geocode.bbox;
+            const poly = L.polygon([
+                bbox.getSouthEast(), bbox.getNorthEast(), bbox.getNorthWest(), bbox.getSouthWest()
+            ]);
+            map.fitBounds(poly.getBounds());
+        })
+        .addTo(map);
+
+        // 4. INTERACTIVE HOVER LAYER
         fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
             .then(r => r.json())
             .then(geo => {
@@ -94,7 +117,7 @@
                         });
                     }
                 }).addTo(map);
-                lb.innerText = "Status: Labels Linked. Syncing Data...";
+                lb.innerText = "Status: Search Active. Syncing Data...";
                 loadData();
             });
     }
@@ -111,7 +134,7 @@
                 return o;
             });
             drawBadges();
-            lb.innerText = "Status: Atlas Operational.";
+            lb.innerText = "Status: Atlas Fully Operational.";
         });
 
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
