@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.2.9</title>
+    <title>Global Atlas | v2.3.0</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -12,6 +12,7 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
 
+        /* Intel Badges */
         .intel-badge {
             background: #f6e05e; border: 2px solid #000; border-radius: 50%;
             color: #000; font-weight: 900; font-size: 11px;
@@ -19,6 +20,14 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.3); pointer-events: auto;
         }
 
+        /* Hover Card (Right) */
+        #hover-card { 
+            position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; 
+            padding: 15px; border-radius: 10px; display: none; width: 240px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #eee; 
+        }
+
+        /* Intelligence Panel (Left) */
         #intel-panel {
             position: fixed; top: 80px; left: 20px; z-index: 9999;
             width: 340px; max-height: 75vh;
@@ -26,28 +35,22 @@
             color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             backdrop-filter: blur(10px);
         }
-        .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+        .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-meta { font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 8px; }
         .pred-cat { color: #68d391; font-weight: bold; background: rgba(104,211,145,0.1); padding: 2px 6px; border-radius: 4px; }
         .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
 
-        #hover-card { 
-            position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; 
-            padding: 15px; border-radius: 10px; display: none; width: 240px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #eee; 
-        }
-        
-        #log { position: fixed; bottom: 10px; left: 10px; z-index: 9999; background: rgba(0,0,0,0.8); color: #00ff00; padding: 5px 10px; font-size: 10px; border-radius: 4px; font-family: monospace; pointer-events: none; }
+        #log { position: fixed; bottom: 10px; left: 10px; z-index: 9999; background: rgba(0,0,0,0.8); color: #00ff00; padding: 5px 10px; font-size: 10px; border-radius: 4px; font-family: monospace; }
     </style>
 </head>
 <body>
 
-<div id="log">Status: Initializing Core...</div>
+<div id="log">Status: Initializing...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-        <img src="" id="card-flag" style="width:35px; border:1px solid #eee; display:none;">
+        <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
         <b id="card-name" style="font-size:15px; color:#1a202c;"></b>
     </div>
     <div style="font-size:12px; margin-bottom:3px;"><span style="color:#64748b; font-weight:600;">Leader:</span> <span id="card-leader" style="color:#3182ce; font-weight:700;"></span></div>
@@ -65,16 +68,56 @@
 <div id="map"></div>
 
 <script>
-    const logger = document.getElementById('log');
-    function log(msg) { logger.innerText = "Status: " + msg; }
-
+    const log = (m) => document.getElementById('log').innerText = "Status: " + m;
     let predictions = [], worldData = {}, leaderData = {}, isLocked = false;
-    
-    // 1. CREATE MAP IMMEDIATELY (Safety First)
+
+    // 1. Immediate Map Creation
     const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-    async function boot() {
+    // 2. Load shapes first (This prevents the "Blue Screen")
+    fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+        .then(r => r.json())
+        .then(geo => {
+            const geoLayer = L.geoJSON(geo, {
+                style: { fillColor: '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.6 },
+                onEachFeature: setupFeature
+            }).addTo(map);
+            log("Land Generated. Fetching Intel...");
+            loadCSV(); // Only load data after land exists
+        })
+        .catch(e => log("GeoJSON Error: " + e.message));
+
+    function setupFeature(f, layer) {
+        const name = f.properties.name;
+        const code = f.properties.iso_a3;
+
+        layer.on({
+            mouseover: () => { 
+                updateHoverCard(name, code);
+                if(!isLocked) showIntel(name, code, false);
+            },
+            mouseout: () => { 
+                if(!isLocked) {
+                    document.getElementById('hover-card').style.display = 'none';
+                    document.getElementById('intel-panel').style.display = 'none';
+                }
+            },
+            click: (e) => { 
+                L.DomEvent.stopPropagation(e);
+                isLocked = true;
+                updateHoverCard(name, code);
+                showIntel(name, code, true);
+            }
+        });
+    }
+
+    // 3. Data Loading (Non-Blocking)
+    function loadCSV() {
         const ts = new Date().getTime();
         
-        //
+        // Predictions
+        fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            const lines = txt.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            predictions = lines
