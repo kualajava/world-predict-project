@@ -3,28 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.3.6</title>
+    <title>Global Atlas | v2.3.7</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
         
-        /* Persistent Status Logger */
-        #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #4ade80; padding: 10px 18px; font-size: 12px; border-radius: 6px; font-family: monospace; border: 1px solid #334155; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
+        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #ddd; }
+        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9998; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.95); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
         
-        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 250px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid #ddd; pointer-events: none; }
-        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9998; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
-        
-        .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
-        .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .pred-text { font-size: 13.5px; line-height: 1.6; color: #f1f5f9; }
-        .intel-badge { background: #f6e05e; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+        .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
+        .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
+        .intel-badge { background: #f6e05e; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.4); }
     </style>
 </head>
 <body>
 
-<div id="log">Status: Connecting to Satellite...</div>
+<div id="log">Status: Booting Detailed Atlas...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -37,8 +35,8 @@
 
 <div id="intel-panel">
     <div class="intel-header">
-        <b id="intel-title" style="color:#f6e05e; font-size:12px; text-transform:uppercase;">Intel Feed</b>
-        <button onclick="closeIntel()" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">✕</button>
+        <span id="intel-title" style="color:#f6e05e; font-weight:800; font-size:11px; text-transform:uppercase;">Intel Feed</span>
+        <button onclick="closeIntel()" style="background:none; border:none; color:white; cursor:pointer;">✕</button>
     </div>
     <div id="intel-body"></div>
 </div>
@@ -47,74 +45,62 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const logEl = document.getElementById('log');
-    function updateLog(msg) { logEl.innerText = "Status: " + msg; }
-
-    // 1. IMMEDIATE TRIGGER
-    updateLog("System Active. Drawing Terrain...");
-
+    const lb = document.getElementById('log');
     let map, geoLayer, isLocked = false;
     let predictions = [], worldData = {}, leaderData = {};
 
-    function boot() {
-        try {
-            // Check if Leaflet Loaded
-            if (typeof L === 'undefined') {
-                updateLog("CRITICAL: Map Library Blocked by Browser.");
-                return;
-            }
+    function init() {
+        lb.innerText = "Status: Rendering Topography...";
+        
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
+        
+        // 1. BASE TERRAIN (The Mountains/Greenery)
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 8
+        }).addTo(map);
 
-            // 2. BUILD MAP (Topographic style from your image)
-            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-            
-            // Primary Physical Layer
-            const topo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
-                maxZoom: 8
-            }).addTo(map);
+        // 2. REFERENCE OVERLAY (Borders, Cities, Rivers, Names)
+        // This sits on TOP of the terrain but BELOW our interaction layer
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+            opacity: 0.8
+        }).addTo(map);
 
-            updateLog("Terrain Synced. Drawing Borders...");
-
-            // 3. LOAD GEOGRAPHY
-            fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
-                .then(r => r.json())
-                .then(geo => {
-                    geoLayer = L.geoJSON(geo, {
-                        style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.3)" },
-                        onEachFeature: (f, layer) => {
-                            layer.on({
-                                mouseover: () => { 
-                                    layer.setStyle({ fillOpacity: 0.15, fillColor: '#fff' });
-                                    updateHover(f.properties.name, f.properties.iso_a3); 
-                                    if(!isLocked) showIntel(f.properties.name, false); 
-                                },
-                                mouseout: () => { 
-                                    layer.setStyle({ fillOpacity: 0 });
-                                    if(!isLocked) {
-                                        document.getElementById('hover-card').style.display='none';
-                                        document.getElementById('intel-panel').style.display='none';
-                                    }
-                                },
-                                click: (e) => { 
-                                    L.DomEvent.stopPropagation(e);
-                                    isLocked = true;
-                                    updateHover(f.properties.name, f.properties.iso_a3);
-                                    showIntel(f.properties.name, true);
+        // 3. INTERACTIVE LAYER (Hidden borders for clicking/hovering)
+        fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+            .then(r => r.json())
+            .then(geo => {
+                geoLayer = L.geoJSON(geo, {
+                    style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.1)" },
+                    onEachFeature: (f, layer) => {
+                        layer.on({
+                            mouseover: () => {
+                                layer.setStyle({ fillOpacity: 0.1, fillColor: '#fff' });
+                                updateHover(f.properties.name, f.properties.iso_a3);
+                                if(!isLocked) showIntel(f.properties.name, false);
+                            },
+                            mouseout: () => {
+                                layer.setStyle({ fillOpacity: 0 });
+                                if(!isLocked) {
+                                    document.getElementById('hover-card').style.display='none';
+                                    document.getElementById('intel-panel').style.display='none';
                                 }
-                            });
-                        }
-                    }).addTo(map);
-                    updateLog("Borders Injected. Fetching Data...");
-                    loadFiles();
-                }).catch(err => updateLog("Geography Fetch Error."));
-
-        } catch (e) {
-            updateLog("Hardware Error: " + e.message);
-        }
+                            },
+                            click: (e) => {
+                                L.DomEvent.stopPropagation(e);
+                                isLocked = true;
+                                updateHover(f.properties.name, f.properties.iso_a3);
+                                showIntel(f.properties.name, true);
+                            }
+                        });
+                    }
+                }).addTo(map);
+                lb.innerText = "Status: Labels Linked. Syncing Data...";
+                loadData();
+            });
     }
 
-    function loadFiles() {
+    function loadData() {
         const ts = Date.now();
-        // Load Predictions
         fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
             const lines = txt.split('\n');
             const h = lines[0].split(',').map(x => x.trim());
@@ -125,10 +111,9 @@
                 return o;
             });
             drawBadges();
-            updateLog("Atlas Fully Operational (v2.3.6)");
-        }).catch(() => updateLog("predictions.csv Not Found."));
+            lb.innerText = "Status: Atlas Operational.";
+        });
 
-        // Load Leaders
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
             txt.split('\n').slice(1).forEach(row => {
                 const p = row.split(',');
@@ -136,7 +121,6 @@
             });
         });
 
-        // Load API Data
         fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population`)
             .then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c));
     }
@@ -186,8 +170,7 @@
 
     function closeIntel() { isLocked = false; document.getElementById('intel-panel').style.display='none'; document.getElementById('hover-card').style.display='none'; }
 
-    // FORCE BOOT
-    boot();
+    init();
 </script>
 </body>
 </html>
