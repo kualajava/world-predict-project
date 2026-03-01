@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | v1.1.8</title>
+    <title>Global Data Project | v1.1.9</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        /* Light Mode Styling */
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #f4f7f9; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        #map { height: 100vh; width: 100vw; display: block; background: #aad3df; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #d0e2f3; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        #map { height: 100vh; width: 100vw; display: block; }
 
         /* Search Bar */
         #search-container {
@@ -21,20 +20,14 @@
             color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        /* Dashboard Popup */
-        .leaflet-popup-content-wrapper { 
-            background: #ffffff !important; 
-            color: #2c3e50 !important; 
-            border-radius: 8px !important; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
-            padding: 0 !important;
-        }
+        /* Popup */
+        .leaflet-popup-content-wrapper { background: #fff !important; color: #2c3e50 !important; border-radius: 8px !important; padding: 0 !important; }
         .leaflet-popup-content { margin: 12px !important; width: 210px !important; }
         .pop-container { display: flex; flex-direction: column; gap: 8px; }
         .pop-top { display: flex; align-items: center; gap: 12px; }
         .pop-flag { width: 45px; height: 30px; border-radius: 3px; object-fit: cover; border: 1px solid #eee; }
-        .pop-country { font-size: 15px; font-weight: 700; margin: 0; color: #1a202c; }
-        .pop-leader { font-size: 12px; color: #3182ce; font-weight: 600; margin-top: 2px; }
+        .pop-country { font-size: 15px; font-weight: 700; margin: 0; }
+        .pop-leader { font-size: 12px; color: #3182ce; font-weight: 600; }
         .pop-bottom { border-top: 1px solid #edf2f7; padding-top: 8px; font-size: 10px; display: flex; justify-content: space-between; color: #718096; }
 
         #version-tag { position: absolute; bottom: 10px; right: 10px; background: #fff; color: #718096; padding: 4px 10px; font-family: monospace; font-size: 10px; z-index: 1000; border: 1px solid #e2e8f0; border-radius: 4px; }
@@ -43,106 +36,27 @@
 <body>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Find country, ocean, or leader...">
+    <input type="text" id="search-input" placeholder="Find country, river, or leader...">
 </div>
 
 <div id="map"></div>
-<div id="version-tag">v1.1.8 - The Atlas View</div>
+<div id="version-tag">v1.1.9 - Rivers & Oceans</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map', { 
-        zoomSnap: 0.1, 
-        attributionControl: false 
-    }).setView([25, 0], 2.3);
+    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([25, 0], 2.3);
     
-    // 1. BOTTOM LAYER: Clean Water/Terrain (No labels)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
+    // 1. PHYSICAL BASE: Shows detailed water, rivers, and topography
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
     let worldData = {};
     let leaderData = {};
     let geoJsonLayer;
     const ts = new Date().getTime();
 
-    // 2. DATA MERGE
+    // 2. DATA LOAD
     Promise.all([
         fetch(`leaders.csv?v=${ts}`).then(res => res.text()),
         fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population&v=${ts}`).then(res => res.json())
     ]).then(([csvText, liveData]) => {
-        csvText.split(/\r?\n/).slice(1).forEach(row => {
-            const cols = row.split(',');
-            if (cols[0]) leaderData[cols[0].trim().toUpperCase()] = { name: cols[1], title: cols[2] };
-        });
-        liveData.forEach(c => worldData[c.cca3] = c);
-        loadBorders();
-    });
-
-    function loadBorders() {
-        fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson?v=${ts}`)
-            .then(res => res.json())
-            .then(geoData => {
-                // 3. MIDDLE LAYER: Colored Interactive Countries
-                geoJsonLayer = L.geoJSON(geoData, {
-                    style: { 
-                        fillColor: "#c6e3b2", // Soft green/earth tone
-                        weight: 1, 
-                        color: '#9dbb8a', 
-                        fillOpacity: 0.5 
-                    },
-                    onEachFeature: (feature, layer) => {
-                        layer.on('click', () => {
-                            const code = (feature.properties.iso_a3 || "").toUpperCase();
-                            const live = worldData[code];
-                            const leader = leaderData[code];
-                            if (live) {
-                                layer.bindPopup(`
-                                    <div class="pop-container">
-                                        <div class="pop-top">
-                                            <img src="${live.flags.png}" class="pop-flag">
-                                            <div class="pop-info">
-                                                <h2 class="pop-country">${live.name.common}</h2>
-                                                <span class="pop-leader">${leader ? leader.name : 'Data Pending'}</span>
-                                            </div>
-                                        </div>
-                                        <div class="pop-bottom">
-                                            <span>POPULATION</span>
-                                            <span style="color:#2d3748; font-weight:600">${live.population.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                `, { maxWidth: 220, closeButton: false }).openPopup();
-                            }
-                        });
-                        layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.8, fillColor: "#8ed1fc" }));
-                        layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.5, fillColor: "#c6e3b2" }));
-                    }
-                }).addTo(map);
-
-                // 4. TOP LAYER: High-Contrast Labels (Countries + Oceans)
-                // This stays on top of the green countries so you can always read names
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-                    zIndex: 1000 
-                }).addTo(map);
-            });
-    }
-
-    // SEARCH LOGIC
-    document.getElementById('search-input').addEventListener('input', function(e) {
-        const query = e.target.value.toLowerCase().trim();
-        if (!geoJsonLayer || query.length < 2) return;
-
-        geoJsonLayer.eachLayer(layer => {
-            const countryName = (layer.feature.properties.name || "").toLowerCase();
-            const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
-            const leaderName = leaderData[code] ? leaderData[code].name.toLowerCase() : "";
-
-            if (countryName.includes(query) || leaderName.includes(query)) {
-                map.flyTo(layer.getBounds().getCenter(), 3);
-                layer.fire('click');
-            }
-        });
-    });
-
-    window.onload = () => { setTimeout(() => { map.invalidateSize(); }, 400); };
-</script>
-</body>
-</html>
+        csvText
