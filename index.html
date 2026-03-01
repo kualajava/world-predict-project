@@ -19,49 +19,42 @@
 <body>
 
 <div id="map"></div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Initialize map with a dark, clean look
+    // Initialize map
     const map = L.map('map', {
-        zoomSnap: 0.5,
-        wheelDebounceTime: 150
+        zoomSnap: 0.1,         // Allows for much smoother, fractional zooming
+        attributionControl: false // Cleans up the bottom right corner
     }).setView([20, 0], 2);
 
-    // Styling for the countries
     const geojsonStyle = {
-        fillColor: "#1a1f26", // Inner country color
-        weight: 1,            // Border thickness
+        fillColor: "#1a1f26",
+        weight: 1,
         opacity: 1,
-        color: '#4a5568',     // Border line color
+        color: '#4a5568',
         fillOpacity: 0.7
     };
 
-    // Load the World Borders (GeoJSON)
     fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
         .then(response => response.json())
         .then(data => {
-            L.geoJSON(data, {
+            const worldLayer = L.geoJSON(data, {
                 style: geojsonStyle,
                 onEachFeature: function (feature, layer) {
-                    // This sets us up for Phase 3 (Hovering)
                     layer.on({
                         mouseover: (e) => {
-                            const l = e.target;
-                            l.setStyle({
-                                fillOpacity: 1,
-                                fillColor: "#3182ce" // Highlights blue on hover
-                            });
+                            e.target.setStyle({ fillOpacity: 1, fillColor: "#3182ce" });
                         },
                         mouseout: (e) => {
-                            const l = e.target;
-                            l.setStyle(geojsonStyle);
+                            e.target.setStyle(geojsonStyle);
                         }
                     });
                 }
             }).addTo(map);
-        });
 
+            // MAGIC LINE: This forces the map to zoom in until the land hits the edges
+            map.fitBounds(worldLayer.getBounds(), { padding: [10, 10] });
+        });
 </script>
 </body>
 </html>
