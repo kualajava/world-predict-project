@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.2.0</title>
+    <title>Global Atlas | v2.2.1</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -12,28 +12,22 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
 
-        /* Glowing Info Icon Style */
-        .intel-marker {
-            background: rgba(246, 224, 94, 0.9);
-            border: 2px solid white;
+        /* Numerical Counter Badge */
+        .intel-counter {
+            background: #f6e05e;
+            border: 2px solid #1a202c;
             border-radius: 50%;
-            color: #0f172a;
-            font-weight: bold;
-            font-family: serif;
-            font-style: italic;
+            color: #1a202c;
+            font-weight: 800;
+            font-size: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 10px rgba(246, 224, 94, 0.8);
+            box-shadow: 0 0 12px rgba(246, 224, 94, 0.9);
             cursor: pointer;
-            animation: pulse 2s infinite;
+            transition: transform 0.2s;
         }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(246, 224, 94, 0.7); }
-            70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(246, 224, 94, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(246, 224, 94, 0); }
-        }
+        .intel-counter:hover { transform: scale(1.3); background: #ffffff; z-index: 1000 !important; }
 
         /* Left Panel */
         #intel-panel {
@@ -59,7 +53,7 @@
 </head>
 <body>
 
-<div id="status-bar">Atlas: Booting...</div>
+<div id="status-bar">Atlas: Initializing...</div>
 
 <div id="intel-panel">
     <div class="intel-header">
@@ -94,16 +88,8 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
     markerLayer = L.layerGroup().addTo(map);
 
-    function getCountryStyle(feature) {
-        const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
-        const region = worldData[feature.properties.iso_a3]?.region;
-        return { fillColor: colors[region] || '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.6 };
-    }
-
     async function startAtlas() {
         const ts = new Date().getTime();
-        
-        // Parallel Data Load
         try {
             const [apiRes, csvL, csvP] = await Promise.all([
                 fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,region`).then(r => r.json()),
@@ -134,28 +120,36 @@
         fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
             .then(r => r.json()).then(geo => {
                 geoLayer = L.geoJSON(geo, {
-                    style: getCountryStyle,
+                    style: (f) => {
+                        const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
+                        const region = worldData[f.properties.iso_a3]?.region;
+                        return { fillColor: colors[region] || '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.6 };
+                    },
                     onEachFeature: (f, l) => {
                         const countryName = f.properties.name;
                         const countryCode = f.properties.iso_a3;
 
-                        // Check if this country has predictions
-                        const hasData = predictions.some(p => {
+                        // Count occurrences for this specific country
+                        const matches = predictions.filter(p => {
                             const c = (p["Country/Region"] || "").toLowerCase();
                             const m = countryName.toLowerCase();
-                            return c.includes(m) || m.includes(c) || (m.includes("united states") && c.includes("usa"));
+                            // Logic for specific mappings (USA, etc)
+                            if (m.includes("united states") || m === "usa") {
+                                return c.includes("usa") || c.includes("united states") || c.includes("america");
+                            }
+                            return c.includes(m) || m.includes(c);
                         });
 
-                        // Drop an "i" marker if data exists
-                        if (hasData) {
+                        // If entries exist, drop the counter badge
+                        if (matches.length > 0) {
                             const center = l.getBounds().getCenter();
-                            const icon = L.divIcon({
+                            const counterIcon = L.divIcon({
                                 className: 'custom-div-icon',
-                                html: `<div class="intel-marker">i</div>`,
-                                iconSize: [20, 20],
-                                iconAnchor: [10, 10]
+                                html: `<div class="intel-counter">${matches.length}</div>`,
+                                iconSize: [24, 24],
+                                iconAnchor: [12, 12]
                             });
-                            const marker = L.marker(center, { icon: icon }).addTo(markerLayer);
+                            const marker = L.marker(center, { icon: counterIcon }).addTo(markerLayer);
                             marker.on('click', (e) => {
                                 isLocked = true;
                                 updateUI(countryCode, countryName);
@@ -186,11 +180,14 @@
         const m = mapName.toLowerCase();
         const filtered = predictions.filter(p => {
             const c = (p["Country/Region"] || "").toLowerCase();
-            return c.includes(m) || m.includes(c) || (m.includes("united states") && c.includes("usa"));
+            if (m.includes("united states") || m === "usa") {
+                return c.includes("usa") || c.includes("united states") || c.includes("america");
+            }
+            return c.includes(m) || m.includes(c);
         });
 
         if (filtered.length > 0) {
-            intelTitle.innerText = `${mapName} Insights`;
+            intelTitle.innerText = `${mapName} Insights (${filtered.length})`;
             intelContent.innerHTML = filtered.map(p => `
                 <div class="prediction-entry">
                     <div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div>
@@ -200,18 +197,3 @@
             intelPanel.style.display = 'block';
         }
     }
-
-    map.on('click', () => {
-        isLocked = true;
-        const global = predictions.filter(p => (p["Country/Region"] || "").toLowerCase().includes("global"));
-        intelTitle.innerText = "Global Intelligence";
-        intelContent.innerHTML = global.map(p => `<div class="prediction-entry"><div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div><div class="pred-desc">${p["Prediction Description"]}</div></div>`).join('');
-        intelPanel.style.display = 'block';
-    });
-
-    document.getElementById('close-intel').onclick = () => { isLocked = false; intelPanel.style.display = 'none'; card.style.display = 'none'; };
-
-    startAtlas();
-</script>
-</body>
-</html>
