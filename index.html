@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.2.9</title>
+    <title>Global Atlas | v1.3.0</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -12,7 +12,17 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; }
 
-        /* Dashboard */
+        /* Consolidating Status and Version into one sleek bar */
+        #status-bar { 
+            position: absolute; bottom: 20px; left: 20px; z-index: 9999; 
+            background: rgba(0, 0, 0, 0.85); color: #00ff00; 
+            padding: 6px 14px; font-family: 'Courier New', monospace; 
+            font-size: 11px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            display: flex; gap: 15px; border: 1px solid #333;
+        }
+        .v-tag { color: #3182ce; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
+
+        /* Dashboard Card */
         #hover-card {
             position: absolute; top: 20px; right: 20px; z-index: 9999;
             width: 260px; background: rgba(255, 255, 255, 0.95); 
@@ -31,132 +41,4 @@
         /* Search Bar */
         #search-container { position: absolute; top: 20px; left: 20px; z-index: 9999; width: 300px; }
         #search-input { 
-            width: 100%; padding: 14px 20px; border-radius: 25px; border: none;
-            background: rgba(255,255,255,0.95); box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            outline: none; font-size: 15px;
-        }
-    </style>
-</head>
-<body>
-
-<div id="search-container">
-    <input type="text" id="search-input" placeholder="Search country or leader...">
-</div>
-
-<div id="hover-card">
-    <div class="card-header">
-        <img src="" id="flag" class="card-flag">
-        <h2 class="card-country" id="name">Country</h2>
-    </div>
-    <div class="card-label">National Leader</div>
-    <div class="card-val card-leader" id="leader">Leader Name</div>
-    <div class="card-label">Total Population</div>
-    <div class="card-val" id="pop">0</div>
-</div>
-
-<div id="map"></div>
-
-<script>
-    const card = document.getElementById('hover-card');
-    let map, geoJsonLayer;
-    let worldData = {};
-    let leaderData = {};
-
-    // 1. Political Color Logic
-    function getPoliticalColor(region) {
-        switch (region) {
-            case 'Africa':   return '#ff9f43'; // Orange
-            case 'Americas': return '#1dd1a1'; // Green
-            case 'Asia':     return '#ff6b6b'; // Red/Coral
-            case 'Europe':   return '#54a0ff'; // Blue
-            case 'Oceania':  return '#feca57'; // Yellow
-            default:         return '#c8d6e5'; // Grey
-        }
-    }
-
-    function init() {
-        map = L.map('map', { 
-            zoomSnap: 0.1, 
-            attributionControl: false,
-            worldCopyJump: true,
-            maxBounds: [[-85, -180], [85, 180]]
-        }).setView([20, 0], 2.3);
-
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-
-        loadData();
-    }
-
-    async function loadData() {
-        const ts = new Date().getTime();
-        try {
-            const [csvRes, apiRes] = await Promise.all([
-                fetch(`leaders.csv?v=${ts}`).then(r => r.text()),
-                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json())
-            ]);
-
-            csvRes.split('\n').slice(1).forEach(row => {
-                const parts = row.split(',');
-                if (parts[0]) leaderData[parts[0].trim().toUpperCase()] = { name: parts[1] };
-            });
-            apiRes.forEach(c => worldData[c.cca3] = c);
-
-            const geoRes = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson');
-            const geoData = await geoRes.json();
-
-            geoJsonLayer = L.geoJSON(geoData, {
-                style: (feature) => {
-                    const code = (feature.properties.iso_a3 || "").toUpperCase();
-                    const data = worldData[code];
-                    return {
-                        fillColor: getPoliticalColor(data ? data.region : ''),
-                        weight: 1,
-                        color: "white",
-                        fillOpacity: 0.4 // Soft opacity to see river lines underneath
-                    };
-                },
-                onEachFeature: (feature, layer) => {
-                    layer.on({
-                        mouseover: (e) => {
-                            const code = (feature.properties.iso_a3 || "").toUpperCase();
-                            const live = worldData[code];
-                            const leader = leaderData[code];
-
-                            e.target.setStyle({ fillOpacity: 0.8 }); // Highlight on hover
-
-                            if (live) {
-                                document.getElementById('name').innerText = live.name.common;
-                                document.getElementById('leader').innerText = leader ? leader.name : "Data Pending";
-                                document.getElementById('flag').src = live.flags.png;
-                                document.getElementById('pop').innerText = live.population.toLocaleString();
-                                card.style.display = 'block';
-                            }
-                        },
-                        mouseout: (e) => {
-                            e.target.setStyle({ fillOpacity: 0.4 });
-                            card.style.display = 'none';
-                        },
-                        click: (e) => map.fitBounds(e.target.getBounds())
-                    });
-                }
-            }).addTo(map);
-
-        } catch (e) { console.error(e); }
-    }
-
-    window.onload = init;
-
-    // Search Logic
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        const val = e.target.value.toLowerCase();
-        if (val.length < 3 || !geoJsonLayer) return;
-        geoJsonLayer.eachLayer(layer => {
-            if ((layer.feature.properties.name || "").toLowerCase().includes(val)) {
-                map.flyTo(layer.getBounds().getCenter(), 4);
-                layer.fire('mouseover');
-            }
-        });
-    });
-</script>
-</body>
-</html>
+            width: 100%; padding: 14px
