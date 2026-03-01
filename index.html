@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.3.4</title>
+    <title>Global Atlas | v2.3.5</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
-        #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #00ff00; padding: 8px 15px; font-size: 12px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; }
-        .intel-badge { background: #f6e05e; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.4); }
+        
+        /* Fixed UI Elements */
+        #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
         #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #ddd; }
-        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9999; width: 340px; max-height: 75vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
+        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9999; width: 340px; max-height: 75vh; background: rgba(15, 23, 42, 0.95); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
+        
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-meta { font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 8px; }
         .pred-cat { color: #68d391; font-weight: bold; background: rgba(104,211,145,0.1); padding: 2px 6px; border-radius: 4px; }
         .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
+
+        .intel-badge { background: #f6e05e; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,0,0,0.4); }
     </style>
 </head>
 <body>
 
-<div id="log">Status: Awaiting Script...</div>
+<div id="log">Status: Initializing...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -45,53 +48,59 @@
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
 <script>
-    // IMMEDIATE EXECUTION CHECK
     const lb = document.getElementById('log');
-    lb.innerHTML = "Status: Script Executed. Initializing...";
-
     let map, geoLayer, isLocked = false;
     let predictions = [], worldData = {}, leaderData = {};
 
-    function start() {
-        if (typeof L === 'undefined') {
-            lb.innerHTML = "Status: ERROR - Leaflet library failed to load.";
-            return;
-        }
+    function init() {
+        lb.innerText = "Status: Building Terrain...";
+        
+        // 1. Create Map with Terrain Provider (Stamen/Esri Physical)
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
+        
+        // This tile layer provides the mountain/color look from your image
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 8
+        }).addTo(map);
 
-        try {
-            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
-            lb.innerHTML = "Status: Map Canvas Ready.";
-
-            // Load shapes
-            fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
-                .then(r => r.json())
-                .then(geo => {
-                    geoLayer = L.geoJSON(geo, {
-                        style: { fillColor: '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.6 },
-                        onEachFeature: (f, layer) => {
-                            const name = f.properties.name;
-                            const code = f.properties.iso_a3;
-                            layer.on({
-                                mouseover: () => { updateHover(name, code); if(!isLocked) showIntel(name, false); },
-                                mouseout: () => { if(!isLocked) { document.getElementById('hover-card').style.display='none'; document.getElementById('intel-panel').style.display='none'; }},
-                                click: (e) => { L.DomEvent.stopPropagation(e); isLocked = true; updateHover(name, code); showIntel(name, true); }
-                            });
-                        }
-                    }).addTo(map);
-                    lb.innerHTML = "Status: Land Shapes Drawn. Loading Intel...";
-                    loadData();
-                });
-        } catch (e) {
-            lb.innerHTML = "Status: Runtime Error: " + e.message;
-        }
+        // 2. Add an overlay for country highlights
+        fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+            .then(r => r.json())
+            .then(geo => {
+                geoLayer = L.geoJSON(geo, {
+                    style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.2)" },
+                    onEachFeature: (f, layer) => {
+                        layer.on({
+                            mouseover: (e) => {
+                                layer.setStyle({ fillOpacity: 0.1, fillColor: '#fff' });
+                                updateHover(f.properties.name, f.properties.iso_a3);
+                                if(!isLocked) showIntel(f.properties.name, false);
+                            },
+                            mouseout: () => {
+                                layer.setStyle({ fillOpacity: 0 });
+                                if(!isLocked) {
+                                    document.getElementById('hover-card').style.display='none';
+                                    document.getElementById('intel-panel').style.display='none';
+                                }
+                            },
+                            click: (e) => {
+                                L.DomEvent.stopPropagation(e);
+                                isLocked = true;
+                                updateHover(f.properties.name, f.properties.iso_a3);
+                                showIntel(f.properties.name, true);
+                            }
+                        });
+                    }
+                }).addTo(map);
+                lb.innerText = "Status: Terrain Ready. Loading Data...";
+                loadData();
+            }).catch(() => lb.innerText = "Status: Geography Sync Error");
     }
 
     function loadData() {
         const ts = Date.now();
-        // CSV 1
+        // Predictions
         fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
             const lines = txt.split('\n');
             const h = lines[0].split(',').map(x => x.trim());
@@ -102,8 +111,8 @@
                 return o;
             });
             drawBadges();
-            lb.innerHTML = "Status: Atlas Fully Operational.";
-        }).catch(() => lb.innerHTML = "Status: CSV Error.");
+            lb.innerText = "Status: Atlas Operational.";
+        });
 
         // Leaders
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
@@ -113,8 +122,8 @@
             });
         });
 
-        // API
-        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,region,population`)
+        // Population/Flags
+        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population`)
             .then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c));
     }
 
@@ -124,7 +133,6 @@
             const matches = predictions.filter(p => {
                 const c = (p["Country/Region"] || "").toLowerCase();
                 const m = n.toLowerCase();
-                if ((m.includes("united states") || m === "usa") && (c.includes("usa") || c.includes("united states"))) return true;
                 return c.includes(m) || m.includes(c);
             });
             if (matches.length > 0) {
@@ -148,4 +156,14 @@
         const matches = predictions.filter(p => {
             const c = (p["Country/Region"] || "").toLowerCase();
             const m = name.toLowerCase();
-            if ((m.includes("united states") || m === "usa") && (c.includes("usa
+            return c.includes(m) || m.includes(c);
+        });
+        if (matches.length === 0) return;
+        document.getElementById('intel-title').innerText = `${name} (${matches.length})`;
+        document.getElementById('intel-body').innerHTML = matches.map(p => `
+            <div class="pred-box">
+                <div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div>
+                <div class="pred-text">${p["Prediction Description"]}</div>
+            </div>
+        `).join('');
+        document.getElementById('intel-
