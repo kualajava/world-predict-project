@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.3.2</title>
+    <title>Global Atlas | v1.3.3</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,26 +12,21 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; }
 
-        /* FIXED POSITION STATUS BAR: Ensuring visibility on Chrome & Safari */
         #status-bar { 
-            position: fixed; bottom: 20px; left: 20px; 
-            z-index: 99999; /* Max priority */
+            position: fixed; bottom: 20px; left: 20px; z-index: 99999; 
             background: rgba(0, 0, 0, 0.85); color: #00ff00; 
             padding: 8px 14px; font-family: 'Courier New', monospace; 
             font-size: 11px; border-radius: 6px; display: flex; gap: 15px; 
             border: 1px solid #333; pointer-events: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
         .v-tag { color: #3182ce; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
 
-        /* Search Bar */
         #search-container { position: fixed; top: 20px; left: 20px; z-index: 99999; width: 280px; }
         #search-input { 
             width: 100%; padding: 12px 20px; border-radius: 25px; border: none;
             background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none; font-size: 15px;
         }
 
-        /* Hover Card */
         #hover-card {
             position: fixed; top: 20px; right: 20px; z-index: 99999;
             width: 240px; background: rgba(255, 255, 255, 0.98); 
@@ -39,116 +34,4 @@
             padding: 16px; display: none; pointer-events: none; border: 1px solid #eee;
         }
         .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .card-flag { width: 40px; border-radius: 3px; border: 1px solid #ddd; }
-        .card-country { font-size: 16px; font-weight: 700; margin: 0; }
-        .card-label { font-size: 10px; color: #718096; text-transform: uppercase; margin-top: 8px; }
-        .card-val { font-size: 14px; font-weight: 600; color: #2d3748; }
-        .card-leader { color: #3182ce; }
-    </style>
-</head>
-<body>
-
-<div id="status-bar">
-    <span id="status-text">Engine: Starting...</span>
-    <span class="v-tag">v1.3.2</span>
-</div>
-
-<div id="search-container">
-    <input type="text" id="search-input" placeholder="Search...">
-</div>
-
-<div id="hover-card">
-    <div class="card-header">
-        <img src="" id="flag" class="card-flag">
-        <h2 class="card-country" id="name"></h2>
-    </div>
-    <div class="card-label">Leader</div>
-    <div class="card-val card-leader" id="leader"></div>
-    <div class="card-label">Population</div>
-    <div class="card-val" id="pop"></div>
-</div>
-
-<div id="map"></div>
-
-<script>
-    const statusText = document.getElementById('status-text');
-    const card = document.getElementById('hover-card');
-    let map, geoJsonLayer, worldData = {}, leaderData = {};
-
-    function getPoliticalColor(region) {
-        const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
-        return colors[region] || '#cbd5e0';
-    }
-
-    async function init() {
-        try {
-            statusText.innerText = "Engine: Ready";
-            
-            map = L.map('map', { 
-                zoomSnap: 0.1, 
-                attributionControl: false,
-                worldCopyJump: true,
-                fadeAnimation: false 
-            }).setView([20, 0], 2.2);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                crossOrigin: true
-            }).addTo(map);
-
-            await loadData();
-            
-            // Force rendering refresh
-            setTimeout(() => { map.invalidateSize(); }, 300);
-        } catch (e) {
-            statusText.innerText = "Error: " + e.message;
-        }
-    }
-
-    async function loadData() {
-        const ts = new Date().getTime();
-        const [csvRes, apiRes] = await Promise.all([
-            fetch(`leaders.csv?v=${ts}`).then(r => r.text()),
-            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json())
-        ]);
-
-        csvRes.split('\n').slice(1).forEach(row => {
-            const p = row.split(',');
-            if (p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
-        });
-        apiRes.forEach(c => worldData[c.cca3] = c);
-
-        const geo = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson').then(r => r.json());
-
-        geoJsonLayer = L.geoJSON(geo, {
-            style: (f) => ({
-                fillColor: getPoliticalColor(worldData[f.properties.iso_a3]?.region),
-                weight: 1, color: "white", fillOpacity: 0.4
-            }),
-            onEachFeature: (f, l) => {
-                l.on({
-                    mouseover: (e) => {
-                        const d = worldData[f.properties.iso_a3];
-                        const lead = leaderData[f.properties.iso_a3];
-                        e.target.setStyle({ fillOpacity: 0.8 });
-                        if (d) {
-                            document.getElementById('name').innerText = d.name.common;
-                            document.getElementById('leader').innerText = lead ? lead.name : "Data Pending";
-                            document.getElementById('flag').src = d.flags.png;
-                            document.getElementById('pop').innerText = d.population.toLocaleString();
-                            card.style.display = 'block';
-                        }
-                    },
-                    mouseout: (e) => {
-                        e.target.setStyle({ fillOpacity: 0.4 });
-                        card.style.display = 'none';
-                    }
-                });
-            }
-        }).addTo(map);
-        statusText.innerText = "Engine: Online";
-    }
-
-    window.addEventListener('load', init);
-</script>
-</body>
-</html>
+        .card-flag { width
