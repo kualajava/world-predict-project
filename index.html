@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.1.4</title>
+    <title>Global Atlas | v2.1.5</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -12,16 +12,14 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; background: #aad3df; }
 
-        /* Intel Panel - Enhanced for Scrolling and Persistence */
+        /* Intel Panel */
         #intel-panel {
             position: fixed; top: 85px; left: 20px; z-index: 9999;
             width: 340px; max-height: calc(100vh - 150px);
-            background: rgba(15, 23, 42, 0.95); 
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
             border-radius: 12px; border: 1px solid rgba(255,255,255,0.15);
             color: white; padding: 0; display: none; overflow-y: auto;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            pointer-events: auto;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); pointer-events: auto;
         }
         
         .intel-header { 
@@ -30,26 +28,19 @@
             display: flex; justify-content: space-between; align-items: center;
         }
         .intel-title { font-size: 13px; font-weight: 800; color: #f6e05e; text-transform: uppercase; letter-spacing: 1px; }
-        
-        #close-intel {
-            background: rgba(255,255,255,0.1); border: none; color: white;
-            width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
-            display: flex; align-items: center; justify-content: center; font-size: 12px;
-        }
-        #close-intel:hover { background: #fc8181; }
+        #close-intel { background: rgba(255,255,255,0.1); border: none; color: white; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; }
 
         .prediction-entry { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-meta { font-size: 10px; color: #94a3b8; margin-bottom: 8px; display: flex; justify-content: space-between; }
         .pred-cat { color: #68d391; font-weight: bold; background: rgba(104, 211, 145, 0.1); padding: 2px 6px; border-radius: 4px; }
         .pred-desc { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
 
-        /* Standard UI Controls */
+        /* UI Controls */
         #status-bar { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: rgba(0, 0, 0, 0.85); color: #00ff00; padding: 8px 14px; font-family: monospace; font-size: 11px; border-radius: 6px; display: flex; gap: 15px; border: 1px solid #444; }
         #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 320px; }
-        #search-input { width: 100%; padding: 12px 22px; border-radius: 25px; border: none; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15); outline: none; font-size: 15px; }
+        #search-input { width: 100%; padding: 12px 22px; border-radius: 25px; border: none; background: white; box-shadow: 0 4px 20px rgba(0,0,0,0.15); outline: none; }
         #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; width: 250px; background: white; border-radius: 14px; padding: 18px; display: none; pointer-events: none; border: 1px solid #eee; }
         
-        /* Custom Scrollbar */
         #intel-panel::-webkit-scrollbar { width: 6px; }
         #intel-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
@@ -57,16 +48,16 @@
 <body>
 
 <div id="status-bar">
-    <span id="status-text">Atlas: Initializing...</span>
-    <span style="color:#f6e05e; font-weight:bold; border-left:1px solid #444; padding-left:15px;">v2.1.4</span>
+    <span id="status-text">Atlas: Ready</span>
+    <span style="color:#f6e05e; font-weight:bold; border-left:1px solid #444; padding-left:15px;">v2.1.5</span>
 </div>
 
-<div id="search-container"><input type="text" id="search-input" placeholder="Search Place or Leader..."></div>
+<div id="search-container"><input type="text" id="search-input" placeholder="Search City, Leader, or Place..."></div>
 
 <div id="intel-panel">
     <div class="intel-header">
         <div class="intel-title" id="intel-country-name">Intelligence Feed</div>
-        <button id="close-intel" title="Close Panel">✕</button>
+        <button id="close-intel">✕</button>
     </div>
     <div id="intel-content"></div>
 </div>
@@ -95,104 +86,65 @@
 
     const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
 
-    // --- 1. BOOT SEQUENCE ---
-    function boot() {
-        try {
-            map = L.map('map', { 
-                zoomSnap: 0.1, 
-                attributionControl: false, 
-                worldCopyJump: true,
-                maxBounds: [[-90, -180], [90, 180]]
-            }).setView([20, 0], 2.2);
+    // --- ENHANCED MATCHER DICTIONARY ---
+    const countryAliases = {
+        "united states": ["usa", "u.s.a", "united states of america", "america"],
+        "united kingdom": ["uk", "u.k.", "britain", "england", "great britain"],
+        "united arab emirates": ["uae", "dubai", "abu dhabi"],
+        "russian federation": ["russia"],
+        "iran": ["global / iran"],
+        "china": ["prc"],
+        "poland": ["polska"]
+    };
 
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
-                crossOrigin: true 
-            }).addTo(map);
-
-            loadData();
-        } catch (e) {
-            statusText.innerText = "Atlas: Boot Error";
-        }
+    function init() {
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false, worldCopyJump: true }).setView([20, 0], 2.2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { crossOrigin: true }).addTo(map);
+        loadData();
     }
 
-    // --- 2. DATA LOADING (Isolated Blocks) ---
     async function loadData() {
         const ts = new Date().getTime();
-
-        // Load Countries API
         try {
-            const apiRes = await fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json());
+            const [apiRes, csvLeaders, csvPreds] = await Promise.all([
+                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json()),
+                fetch(`leaders.csv?v=${ts}`).then(r => r.text()).catch(() => ""),
+                fetch(`predictions.csv?v=${ts}`).then(r => r.text()).catch(() => "")
+            ]);
+
             apiRes.forEach(c => worldData[c.cca3] = c);
-        } catch(e) { console.error("API Fail"); }
-
-        // Load Leaders CSV
-        try {
-            const csvL = await fetch(`leaders.csv?v=${ts}`).then(r => r.text());
-            csvL.split('\n').slice(1).forEach(row => {
+            csvLeaders.split('\n').slice(1).forEach(row => {
                 const p = row.split(',');
                 if (p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
             });
-        } catch(e) { console.warn("Leaders CSV missing"); }
 
-        // Load Predictions CSV
-        try {
-            const csvP = await fetch(`predictions.csv?v=${ts}`).then(r => r.text());
-            const lines = csvP.split('\n');
-            if (lines.length > 0) {
-                const headers = lines[0].split(',');
-                predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
-                    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                    const obj = {};
-                    headers.forEach((h, i) => {
-                        const key = h.trim();
-                        obj[key] = values[i] ? values[i].replace(/"/g, '').trim() : "";
-                    });
-                    return obj;
-                });
-            }
-        } catch(e) { console.warn("Predictions CSV missing"); }
+            const lines = csvPreds.split('\n');
+            const headers = lines[0].split(',');
+            predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const obj = {};
+                headers.forEach((h, i) => obj[h.trim()] = values[i]?.replace(/"/g, '').trim() || "");
+                return obj;
+            });
 
-        // Load GeoJSON & Render Map
-        try {
             const geo = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson').then(r => r.json());
             geoJsonLayer = L.geoJSON(geo, {
-                style: (f) => ({
-                    fillColor: colors[worldData[f.properties.iso_a3]?.region] || '#cbd5e0',
-                    weight: 1, color: "white", fillOpacity: 0.4
-                }),
+                style: (f) => ({ fillColor: colors[worldData[f.properties.iso_a3]?.region] || '#cbd5e0', weight: 1, color: "white", fillOpacity: 0.4 }),
                 onEachFeature: (f, l) => {
                     l.on({
-                        mouseover: (e) => {
-                            if (isLocked) return;
-                            e.target.setStyle({ fillOpacity: 0.8 });
-                            updateUI(f.properties.iso_a3, f.properties.name);
-                        },
-                        mouseout: (e) => {
-                            if (isLocked) return;
-                            e.target.setStyle({ fillOpacity: 0.4 });
-                            card.style.display = 'none';
-                            intelPanel.style.display = 'none';
-                        },
-                        click: (e) => {
-                            isLocked = true;
-                            updateUI(f.properties.iso_a3, f.properties.name);
-                            L.DomEvent.stopPropagation(e);
-                        }
+                        mouseover: (e) => { if (!isLocked) { e.target.setStyle({ fillOpacity: 0.8 }); updateUI(f.properties.iso_a3, f.properties.name); }},
+                        mouseout: (e) => { if (!isLocked) { e.target.setStyle({ fillOpacity: 0.4 }); card.style.display = 'none'; intelPanel.style.display = 'none'; }},
+                        click: (e) => { isLocked = true; updateUI(f.properties.iso_a3, f.properties.name); L.DomEvent.stopPropagation(e); }
                     });
                 }
             }).addTo(map);
             statusText.innerText = "Atlas: Online";
-        } catch(e) {
-            statusText.innerText = "Atlas: Render Error";
-        }
+        } catch (e) { statusText.innerText = "Atlas: Sync Error"; }
     }
 
-    // --- 3. UI LOGIC ---
     function updateUI(code, mapName) {
         const d = worldData[code];
         const lead = leaderData[code];
-        
-        // Update Hover Card (Top Right)
         if (d) {
             document.getElementById('name').innerText = d.name.common;
             document.getElementById('leader').innerText = lead ? lead.name : "Data Pending";
@@ -200,11 +152,21 @@
             card.style.display = 'block';
         }
 
-        // Search Predictions
+        // --- SMART SEARCH LOGIC ---
         const countryPreds = predictions.filter(p => {
             const csvLoc = (p["Country/Region"] || "").toLowerCase();
-            const mapLoc = mapName.toLowerCase();
-            return csvLoc.includes(mapLoc) || mapLoc.includes(csvLoc);
+            const mapLocNormalized = mapName.toLowerCase();
+            
+            // 1. Check for standard inclusion
+            if (csvLoc.includes(mapLocNormalized) || mapLocNormalized.includes(csvLoc)) return true;
+            
+            // 2. Check Alias dictionary
+            for (let officialName in countryAliases) {
+                if (mapLocNormalized.includes(officialName) || officialName.includes(mapLocNormalized)) {
+                    return countryAliases[officialName].some(alias => csvLoc.includes(alias));
+                }
+            }
+            return false;
         });
 
         if (countryPreds.length > 0) {
@@ -212,10 +174,10 @@
             intelContent.innerHTML = countryPreds.map(p => `
                 <div class="prediction-entry">
                     <div class="pred-meta">
-                        <span>${p["Date of Premonition"] || "Unknown Date"}</span>
-                        <span class="pred-cat">${p["Meta Data"] || "General"}</span>
+                        <span>${p["Date of Premonition"]}</span>
+                        <span class="pred-cat">${p["Meta Data"]}</span>
                     </div>
-                    <div class="pred-desc">${p["Prediction Description"] || "No details provided."}</div>
+                    <div class="pred-desc">${p["Prediction Description"]}</div>
                 </div>
             `).join('');
             intelPanel.style.display = 'block';
@@ -224,16 +186,9 @@
         }
     }
 
-    // --- 4. INTERACTIVE HANDLERS ---
-    closeBtn.onclick = () => {
-        isLocked = false;
-        intelPanel.style.display = 'none';
-        card.style.display = 'none';
-        if (geoJsonLayer) geoJsonLayer.eachLayer(l => l.setStyle({ fillOpacity: 0.4 }));
-    };
-
-    // Initialize on window load
-    window.onload = boot;
+    closeBtn.onclick = () => { isLocked = false; intelPanel.style.display = 'none'; card.style.display = 'none'; geoJsonLayer.eachLayer(l => l.setStyle({ fillOpacity: 0.4 })); };
+    map.on('click', () => { isLocked = false; intelPanel.style.display = 'none'; card.style.display = 'none'; if(geoJsonLayer) geoJsonLayer.eachLayer(l => l.setStyle({ fillOpacity: 0.4 })); });
+    window.onload = init;
 </script>
 </body>
 </html>
