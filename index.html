@@ -3,62 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.3.6</title>
+    <title>Global Atlas | v2.0.0</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; background: #aad3df; }
 
+        /* Status Bar - Major Version Branding */
         #status-bar { 
             position: fixed; bottom: 20px; left: 20px; z-index: 9999; 
             background: rgba(0, 0, 0, 0.85); color: #00ff00; 
-            padding: 8px 14px; font-family: monospace; font-size: 11px; 
-            border-radius: 6px; display: flex; gap: 15px; border: 1px solid #333;
+            padding: 8px 14px; font-family: 'Courier New', monospace; font-size: 11px; 
+            border-radius: 6px; display: flex; gap: 15px; border: 1px solid #444;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
-        .v-tag { color: #3182ce; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
+        .v-tag { color: #f6e05e; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
 
+        /* Search Container - Shifted for Zoom Control Clearance */
         #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 320px; }
         #search-input { 
-            width: 100%; padding: 12px 20px; border-radius: 25px; border: none;
-            background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.15); outline: none; font-size: 15px;
+            width: 100%; padding: 12px 22px; border-radius: 25px; border: none;
+            background: rgba(255, 255, 255, 0.98); box-shadow: 0 4px 20px rgba(0,0,0,0.15); 
+            outline: none; font-size: 15px; transition: all 0.2s;
         }
+        #search-input:focus { box-shadow: 0 4px 25px rgba(49, 130, 206, 0.3); width: 350px; }
 
+        /* Hover Dashboard */
         #hover-card {
             position: fixed; top: 20px; right: 20px; z-index: 9999;
-            width: 240px; background: rgba(255, 255, 255, 0.98); 
-            border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.15);
-            padding: 16px; display: none; pointer-events: none; border: 1px solid #eee;
+            width: 250px; background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            padding: 18px; display: none; pointer-events: none; border: 1px solid rgba(255,255,255,0.3);
         }
-        .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        .card-flag { width: 40px; border: 1px solid #ddd; border-radius: 3px; }
-        .card-country { font-size: 16px; font-weight: 700; margin: 0; }
-        .card-label { font-size: 10px; color: #718096; text-transform: uppercase; margin-top: 8px; }
-        .card-val { font-size: 14px; font-weight: 600; color: #2d3748; }
+        .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .card-flag { width: 44px; height: 30px; object-fit: cover; border-radius: 4px; border: 1px solid #e2e8f0; }
+        .card-country { font-size: 18px; font-weight: 700; color: #1a202c; margin: 0; }
+        .card-label { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 10px; }
+        .card-val { font-size: 15px; font-weight: 600; color: #2d3748; }
+        .card-leader { color: #3182ce; }
     </style>
 </head>
 <body>
 
 <div id="status-bar">
-    <span id="status-text">System: Ready</span>
-    <span class="v-tag">v1.3.6</span>
+    <span id="status-text">Atlas: Ready</span>
+    <span class="v-tag">v2.0.0</span>
 </div>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search Place, Leader, or Landmark...">
+    <input type="text" id="search-input" placeholder="Search City, Leader, Ocean, State...">
 </div>
 
 <div id="hover-card">
     <div class="card-header">
         <img src="" id="flag" class="card-flag">
-        <h2 class="card-country" id="name"></h2>
+        <h2 class="card-country" id="name">Country</h2>
     </div>
-    <div class="card-label">Leader</div>
-    <div class="card-val" id="leader" style="color:#3182ce"></div>
-    <div class="card-label">Population</div>
-    <div class="card-val" id="pop"></div>
+    <div class="card-label">National Leader</div>
+    <div class="card-val card-leader" id="leader">Leader Name</div>
+    <div class="card-label">Total Population</div>
+    <div class="card-val" id="pop">0</div>
 </div>
 
 <div id="map"></div>
@@ -69,7 +77,10 @@
     let map, geoJsonLayer, worldData = {}, leaderData = {};
     let searchTimeout;
 
-    function boot() {
+    // Political Color Palette
+    const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
+
+    function init() {
         try {
             map = L.map('map', { 
                 zoomSnap: 0.1, 
@@ -82,13 +93,13 @@
                 crossOrigin: true
             }).addTo(map);
 
-            loadContent();
+            loadAtlasData();
         } catch (e) {
-            statusText.innerText = "System: Engine Fail";
+            statusText.innerText = "Atlas: Boot Error";
         }
     }
 
-    async function loadContent() {
+    async function loadAtlasData() {
         const ts = new Date().getTime();
         try {
             const [csvRes, apiRes] = await Promise.all([
@@ -105,18 +116,15 @@
             const geo = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson').then(r => r.json());
 
             geoJsonLayer = L.geoJSON(geo, {
-                style: (f) => {
-                    const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
-                    return {
-                        fillColor: colors[worldData[f.properties.iso_a3]?.region] || '#cbd5e0',
-                        weight: 1, color: "white", fillOpacity: 0.4
-                    };
-                },
+                style: (f) => ({
+                    fillColor: colors[worldData[f.properties.iso_a3]?.region] || '#cbd5e0',
+                    weight: 1, color: "white", fillOpacity: 0.4
+                }),
                 onEachFeature: (f, l) => {
                     l.on({
                         mouseover: (e) => {
                             e.target.setStyle({ fillOpacity: 0.8 });
-                            display(f.properties.iso_a3);
+                            updateCard(f.properties.iso_a3);
                         },
                         mouseout: (e) => {
                             e.target.setStyle({ fillOpacity: 0.4 });
@@ -126,15 +134,15 @@
                 }
             }).addTo(map);
 
-            statusText.innerText = "System: Online";
-            setTimeout(() => { map.invalidateSize(); }, 400);
+            statusText.innerText = "Atlas: Online";
+            setTimeout(() => { map.invalidateSize(); }, 500);
 
         } catch (e) {
-            statusText.innerText = "System: Offline Data";
+            statusText.innerText = "Atlas: Data Error";
         }
     }
 
-    function display(code) {
+    function updateCard(code) {
         const d = worldData[code];
         const lead = leaderData[code];
         if (d) {
@@ -146,49 +154,46 @@
         }
     }
 
-    // HYBRID SEARCH ENGINE (Local + Global)
+    // Global Search Logic
     document.getElementById('search-input').addEventListener('input', (e) => {
         const term = e.target.value.trim();
         clearTimeout(searchTimeout);
-
         if (term.length < 3) return;
 
-        // Debounce to prevent hitting the API too many times per second
         searchTimeout = setTimeout(() => {
             let foundLocally = false;
-
-            // 1. Search Locally (Countries/Leaders)
+            
+            // Local Search
             geoJsonLayer.eachLayer(layer => {
                 const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
-                const countryName = (layer.feature.properties.name || "").toLowerCase();
-                const leadName = (leaderData[code]?.name || "").toLowerCase();
+                const country = (layer.feature.properties.name || "").toLowerCase();
+                const lead = (leaderData[code]?.name || "").toLowerCase();
 
-                if (countryName.includes(term.toLowerCase()) || leadName.includes(term.toLowerCase())) {
+                if (country.includes(term.toLowerCase()) || lead.includes(term.toLowerCase())) {
                     map.flyTo(layer.getBounds().getCenter(), 4);
-                    display(code);
+                    updateCard(code);
                     foundLocally = true;
                 }
             });
 
-            // 2. Search Globally (Cities, States, Oceans, Mountains)
+            // Global Search (Nominatim)
             if (!foundLocally) {
-                statusText.innerText = "System: Searching Globe...";
+                statusText.innerText = "Atlas: Searching Globe...";
                 fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(term)}&limit=1`)
                     .then(r => r.json())
                     .then(data => {
                         if (data && data.length > 0) {
-                            const result = data[0];
-                            map.flyTo([result.lat, result.lon], 6);
-                            statusText.innerText = "System: Online";
+                            map.flyTo([data[0].lat, data[0].lon], 7);
+                            statusText.innerText = "Atlas: Online";
                         } else {
-                            statusText.innerText = "System: Place Not Found";
+                            statusText.innerText = "Atlas: No Result";
                         }
                     });
             }
         }, 600);
     });
 
-    window.onload = boot;
+    window.onload = init;
 </script>
 </body>
 </html>
