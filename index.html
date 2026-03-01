@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.2.8</title>
+    <title>Global Atlas | v2.2.9</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -12,7 +12,6 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
 
-        /* Counter Badge */
         .intel-badge {
             background: #f6e05e; border: 2px solid #000; border-radius: 50%;
             color: #000; font-weight: 900; font-size: 11px;
@@ -20,13 +19,12 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.3); pointer-events: auto;
         }
 
-        /* Side Intelligence Panel */
         #intel-panel {
             position: fixed; top: 80px; left: 20px; z-index: 9999;
             width: 340px; max-height: 75vh;
             background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #334155;
             color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
         }
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
@@ -34,7 +32,6 @@
         .pred-cat { color: #68d391; font-weight: bold; background: rgba(104,211,145,0.1); padding: 2px 6px; border-radius: 4px; }
         .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
 
-        /* Hover Card (Restored UI) */
         #hover-card { 
             position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; 
             padding: 15px; border-radius: 10px; display: none; width: 240px; 
@@ -46,11 +43,11 @@
 </head>
 <body>
 
-<div id="log">Status: Initializing...</div>
+<div id="log">Status: Initializing Core...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-        <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
+        <img src="" id="card-flag" style="width:35px; border:1px solid #eee; display:none;">
         <b id="card-name" style="font-size:15px; color:#1a202c;"></b>
     </div>
     <div style="font-size:12px; margin-bottom:3px;"><span style="color:#64748b; font-weight:600;">Leader:</span> <span id="card-leader" style="color:#3182ce; font-weight:700;"></span></div>
@@ -60,3 +57,24 @@
 <div id="intel-panel">
     <div class="intel-header">
         <span id="intel-title" style="color:#f6e05e; font-weight:800; font-size:12px; text-transform:uppercase;">Intel Feed</span>
+        <button onclick="closeIntel()" style="background:rgba(255,255,255,0.1); border:none; color:white; cursor:pointer; width:26px; height:26px; border-radius:50%;">✕</button>
+    </div>
+    <div id="intel-body"></div>
+</div>
+
+<div id="map"></div>
+
+<script>
+    const logger = document.getElementById('log');
+    function log(msg) { logger.innerText = "Status: " + msg; }
+
+    let predictions = [], worldData = {}, leaderData = {}, isLocked = false;
+    
+    // 1. CREATE MAP IMMEDIATELY (Safety First)
+    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
+
+    async function boot() {
+        const ts = new Date().getTime();
+        
+        //
