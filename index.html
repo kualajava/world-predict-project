@@ -3,25 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | v1.1.7</title>
+    <title>Global Data Project | v1.1.8</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         /* Light Mode Styling */
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #f4f7f9; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { height: 100vh; width: 100vw; display: block; background: #e0e6eb; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #f4f7f9; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        #map { height: 100vh; width: 100vw; display: block; background: #aad3df; }
 
-        /* Modern Light Search Bar */
+        /* Search Bar */
         #search-container {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            z-index: 1100; width: 300px;
+            z-index: 1100; width: 320px;
         }
         #search-input {
             width: 100%; padding: 12px 20px; border-radius: 25px;
-            border: 1px solid #ccd6dd; background: rgba(255, 255, 255, 0.9);
-            color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border: 1px solid #ccd6dd; background: rgba(255, 255, 255, 0.95);
+            color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        /* Professional Light Popup */
+        /* Dashboard Popup */
         .leaflet-popup-content-wrapper { 
             background: #ffffff !important; 
             color: #2c3e50 !important; 
@@ -43,11 +43,11 @@
 <body>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search country or leader...">
+    <input type="text" id="search-input" placeholder="Find country, ocean, or leader...">
 </div>
 
 <div id="map"></div>
-<div id="version-tag">v1.1.7 - Light Mode Labels</div>
+<div id="version-tag">v1.1.8 - The Atlas View</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -56,15 +56,15 @@
         attributionControl: false 
     }).setView([25, 0], 2.3);
     
-    // LIGHT TILE LAYER: Includes Ocean Colors, Ocean Names, and Country Labels
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png').addTo(map);
+    // 1. BOTTOM LAYER: Clean Water/Terrain (No labels)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png').addTo(map);
 
     let worldData = {};
     let leaderData = {};
     let geoJsonLayer;
     const ts = new Date().getTime();
 
-    // Fetch and Map Data
+    // 2. DATA MERGE
     Promise.all([
         fetch(`leaders.csv?v=${ts}`).then(res => res.text()),
         fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population&v=${ts}`).then(res => res.json())
@@ -81,12 +81,13 @@
         fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson?v=${ts}`)
             .then(res => res.json())
             .then(geoData => {
+                // 3. MIDDLE LAYER: Colored Interactive Countries
                 geoJsonLayer = L.geoJSON(geoData, {
                     style: { 
-                        fillColor: "#e2e8f0", 
+                        fillColor: "#c6e3b2", // Soft green/earth tone
                         weight: 1, 
-                        color: '#cbd5e0', 
-                        fillOpacity: 0.2 
+                        color: '#9dbb8a', 
+                        fillOpacity: 0.5 
                     },
                     onEachFeature: (feature, layer) => {
                         layer.on('click', () => {
@@ -111,9 +112,15 @@
                                 `, { maxWidth: 220, closeButton: false }).openPopup();
                             }
                         });
-                        layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.5, fillColor: "#bee3f8" }));
-                        layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.2, fillColor: "#e2e8f0" }));
+                        layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.8, fillColor: "#8ed1fc" }));
+                        layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.5, fillColor: "#c6e3b2" }));
                     }
+                }).addTo(map);
+
+                // 4. TOP LAYER: High-Contrast Labels (Countries + Oceans)
+                // This stays on top of the green countries so you can always read names
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+                    zIndex: 1000 
                 }).addTo(map);
             });
     }
