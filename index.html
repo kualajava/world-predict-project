@@ -1,42 +1,62 @@
 <style>
-    /* 1. Global Map Styling */
     body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
     #map { height: 100vh; width: 100vw; background: #05070a; }
 
-    /* 2. Professional Dashboard Popup Styling */
+    /* Compact Popup Styling */
     .leaflet-popup-content-wrapper {
-        background: rgba(20, 27, 38, 0.95) !important; /* Deep dark blue-grey */
-        color: #ffffff !important;
-        border-radius: 12px !important;
-        padding: 0 !important;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-        backdrop-filter: blur(8px);
-    }
-    .leaflet-popup-tip {
-        background: rgba(20, 27, 38, 0.95) !important;
+        background: rgba(15, 20, 28, 0.98) !important;
+        color: #fff !important;
+        border-radius: 8px !important;
+        border: 1px solid rgba(79, 209, 197, 0.2);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.6) !important;
     }
     .leaflet-popup-content {
         margin: 0 !important;
-        width: 240px !important;
+        width: 220px !important; /* Narrower box */
     }
 
-    /* 3. Dashboard Content Layout */
-    .db-card { padding: 16px; font-family: 'Inter', -apple-system, sans-serif; }
-    .db-header { 
-        display: flex; align-items: center; gap: 12px; margin-bottom: 15px; 
-        border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px;
+    /* Flexbox Layout */
+    .db-mini-card { padding: 10px; font-family: 'Inter', sans-serif; }
+    
+    /* Top Row: Flag Left, Text Right */
+    .db-top-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .db-flag { width: 45px; height: 30px; border-radius: 3px; object-fit: cover; flex-shrink: 0; }
+    .db-main-info { display: flex; flex-direction: column; overflow: hidden; }
+    
+    .db-country { font-size: 14px; font-weight: 700; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .db-leader { font-size: 12px; color: #4fd1c5; font-weight: 500; margin-top: 2px; }
+
+    /* Bottom Row: Population */
+    .db-bottom-row { 
+        border-top: 1px solid rgba(255,255,255,0.1); 
+        padding-top: 6px; 
+        display: flex; justify-content: space-between; align-items: center;
     }
-    .db-flag { width: 45px; height: 30px; border-radius: 4px; object-fit: cover; border: 1px solid rgba(255,255,255,0.1); }
-    .db-country { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; margin: 0; color: #fff; }
-    
-    .db-stat-row { display: flex; flex-direction: column; gap: 10px; }
-    .db-item { display: flex; justify-content: space-between; align-items: baseline; }
-    .db-label { color: #8a94a6; font-size: 11px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
-    .db-value { color: #e2e8f0; font-size: 13px; font-weight: 500; }
-    .db-leader { color: #4fd1c5; font-weight: 600; } /* Teal accent for the leader */
-    
+    .db-label { font-size: 9px; color: #8a94a6; text-transform: uppercase; letter-spacing: 0.5px; }
+    .db-value { font-size: 11px; color: #cbd5e0; font-weight: 600; }
+
     #version-tag { 
         position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); 
         color: #4fd1c5; padding: 4px 10px; font-family: monospace; font-size: 10px; 
-        border-radius: 6px; z-index: 1000; border: 1px solid rgba(
+        border-radius: 6px; z-index: 1000; border: 1px solid rgba(79, 209, 197, 0.3); 
+    }
+</style>
+
+<script>
+    // ... within your loop ...
+    layer.bindPopup(`
+        <div class="db-mini-card">
+            <div class="db-top-row">
+                <img src="${live.flags.png}" class="db-flag">
+                <div class="db-main-info">
+                    <h2 class="db-country">${live.name.common}</h2>
+                    <span class="db-leader">${leaderName}</span>
+                </div>
+            </div>
+            <div class="db-bottom-row">
+                <span class="db-label">Population</span>
+                <span class="db-value">${pop}</span>
+            </div>
+        </div>
+    `, { maxWidth: 250, closeButton: false }).openPopup();
+</script>
