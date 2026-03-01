@@ -3,87 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.2.6</title>
+    <title>Global Atlas | v1.2.7</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <style>
-        /* Force container to fill Mac browser window */
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #001529; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; background: #aad3df; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; }
 
-        /* Search Bar Optimized for Mac Retina Displays */
-        #search-container { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; width: 90%; max-width: 400px; }
+        /* Search Bar */
+        #search-container { position: absolute; top: 20px; left: 20px; z-index: 9999; width: 280px; }
         #search-input { 
-            width: 100%; padding: 14px 20px; border-radius: 25px; 
-            border: 1px solid #3182ce; background: rgba(255,255,255,0.95);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2); outline: none; font-size: 16px;
-            -webkit-appearance: none; /* Safari Fix */
+            width: 100%; padding: 12px 18px; border-radius: 20px; border: 1px solid #3182ce; 
+            background: rgba(255,255,255,0.9); box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none;
         }
 
-        #status-bar { position: absolute; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #00ff00; padding: 6px 12px; font-family: 'Courier New', monospace; font-size: 11px; border-radius: 4px; opacity: 0.9; }
+        /* NEW: Floating Hover Dashboard */
+        #info-box {
+            position: absolute; top: 20px; right: 20px; z-index: 9999;
+            width: 240px; background: white; border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); border: 1px solid #e2e8f0;
+            padding: 15px; display: none; /* Hidden until hover */
+            transition: opacity 0.2s; pointer-events: none;
+        }
+        .info-title { font-size: 18px; font-weight: 800; margin: 0 0 4px 0; color: #1a202c; }
+        .info-leader { font-size: 14px; font-weight: 600; color: #3182ce; margin-bottom: 10px; display: block; }
+        .info-stats { border-top: 1px solid #edf2f7; padding-top: 10px; display: flex; align-items: center; gap: 10px; }
+        .info-flag { width: 40px; height: 26px; object-fit: cover; border-radius: 3px; border: 1px solid #eee; }
+        .info-pop { font-size: 11px; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-val { font-size: 13px; font-weight: 700; color: #2d3748; }
+
+        #status-bar { position: absolute; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #00ff00; padding: 6px 12px; font-family: monospace; font-size: 10px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div id="status-bar">Mac Diagnostic: Booting...</div>
+<div id="status-bar">System: Online</div>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search Country, Leader, or Ocean...">
+    <input type="text" id="search-input" placeholder="Search Country or Leader...">
+</div>
+
+<div id="info-box">
+    <div id="info-content">
+        <h2 class="info-title" id="country-name">Country</h2>
+        <span class="info-leader" id="leader-name">Leader Name</span>
+        <div class="info-stats">
+            <img src="" id="country-flag" class="info-flag">
+            <div>
+                <div class="info-pop">Population</div>
+                <div class="info-val" id="population-val">0</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div id="map"></div>
 
 <script>
-    const status = document.getElementById('status-bar');
-    const setStatus = (msg) => { status.innerText = `Mac Diagnostic: ${msg}`; console.log(msg); };
+    const setStatus = (msg) => document.getElementById('status-bar').innerText = `System: ${msg}`;
+    const infoBox = document.getElementById('info-box');
 
-    // 2. Start Map Immediately (Don't wait for data)
-    function startAtlas() {
-        try {
-            setStatus("Initializing Map Engine...");
-            
-            const map = L.map('map', {
-                zoomSnap: 0.1,
-                attributionControl: false,
-                trackResize: true
-            }).setView([20, 0], 2.3);
+    let map, geoJsonLayer;
+    let worldData = {};
+    let leaderData = {};
 
-            // 3. THE "ALL-IN-ONE" LAYER: High compatibility for Safari
-            // This contains Ocean Names, Country Labels, and Rivers
-            const tiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                crossOrigin: true // Critical for Mac local file testing
-            }).addTo(map);
+    function init() {
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.3);
 
-            tiles.on('tileload', () => setStatus("Map Visible. Syncing Rivers & Oceans..."));
-            tiles.on('tileerror', () => setStatus("Network Error: Tiles Blocked."));
+        // 1. Base Layer + Labels (Voyager)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
-            loadIntelligence(map);
-
-            // Force Safari to redraw the map container
-            setTimeout(() => { map.invalidateSize(); }, 500);
-
-        } catch (e) {
-            setStatus("Critical Error: " + e.message);
-        }
+        loadData();
     }
 
-    async function loadIntelligence(map) {
-        let worldData = {};
-        let leaderData = {};
+    async function loadData() {
         const ts = new Date().getTime();
-
         try {
-            // Load External Assets
             const [csvRes, apiRes] = await Promise.all([
                 fetch(`leaders.csv?v=${ts}`).then(r => r.text()).catch(() => ""),
-                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population`).then(r => r.json()).catch(() => [])
+                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population`).then(r => r.json())
             ]);
 
-            // Parse CSV for Starmer/Trump etc.
             csvRes.split('\n').slice(1).forEach(row => {
                 const parts = row.split(',');
                 if (parts[0]) leaderData[parts[0].trim().toUpperCase()] = { name: parts[1] };
             });
-            apiRes.forEach(c => worldData[c
+            apiRes.forEach(c => worldData[c.cca3] = c);
+
+            const geoRes = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson');
+            const geoData = await geoRes.json();
+
+            geoJsonLayer = L.geoJSON(geoData, {
+                style: { fillColor: "#4ade80", weight: 1, color: "white", fillOpacity: 0.15 },
+                onEachFeature: (feature, layer) => {
+                    layer.on({
+                        mouseover: (e) => {
+                            const code = (feature.properties.iso_a3 || "").toUpperCase();
+                            const live = worldData[code];
+                            const leader = leaderData[code];
+
+                            // Highlight country
+                            e.target.setStyle({ fillOpacity: 0.4, fillColor: "#3182ce" });
+
+                            if (live) {
+                                document.getElementById('country-name').innerText = live.name.common;
+                                document.getElementById('leader-name').innerText = leader ? leader.name : "Data Pending";
+                                document.getElementById('country-flag').src = live.flags.png;
+                                document.getElementById('population-val').innerText = live.population.toLocaleString();
+                                infoBox.style.display = 'block';
+                            }
+                        },
+                        mouseout: (e) => {
+                            e.target.setStyle({ fillOpacity: 0.15, fillColor: "#4ade80" });
+                            infoBox.style.display = 'none';
+                        },
+                        click: (e) => {
+                            map.fitBounds(e.target.getBounds());
+                        }
+                    });
+                }
+            }).addTo(map);
+
+            setStatus("Atlas Ready (Hover over a country)");
+        } catch (err) {
+            setStatus("Data Error: Check leaders.csv format");
+        }
+    }
+
+    window.onload = init;
+
+    // Search
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        const val = e.target.value.toLowerCase();
+        if (val.length < 3 || !geoJsonLayer) return;
+        geoJsonLayer.eachLayer(layer => {
+            if ((layer.feature.properties.name || "").toLowerCase().includes(val)) {
+                map.flyTo(layer.getBounds().getCenter(), 4);
+                // Trigger the hover data manually
+                layer.fire('mouseover');
+            }
+        });
+    });
+</script>
+</body>
+</html>
