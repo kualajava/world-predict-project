@@ -111,4 +111,84 @@
         });
     }
 
-    function load
+    function loadIntel() {
+        const ts = Date.now();
+        // Load CSVs and API simultaneously but non-blocking
+        fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            const lines = txt.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = values[i]?.replace(/"/g, '').trim() || "");
+                return obj;
+            });
+            drawBadges();
+            logBox.innerText = "Status: Atlas Operational.";
+        }).catch(() => { logBox.innerText = "Status: Predictions CSV Missing."; });
+
+        fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            txt.split('\n').slice(1).forEach(row => {
+                const p = row.split(',');
+                if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+            });
+        }).catch(() => {});
+
+        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,region,population`)
+            .then(r => r.json()).then(data => { data.forEach(c => worldData[c.cca3] = c); })
+            .catch(() => {});
+    }
+
+    function drawBadges() {
+        if(!geoLayer) return;
+        geoLayer.eachLayer(layer => {
+            const name = layer.feature.properties.name;
+            const matches = predictions.filter(p => {
+                const c = (p["Country/Region"] || "").toLowerCase();
+                const m = name.toLowerCase();
+                if ((m.includes("united states") || m === "usa") && (c.includes("usa") || c.includes("united states"))) return true;
+                return c.includes(m) || m.includes(c);
+            });
+            if (matches.length > 0) {
+                const center = layer.getBounds().getCenter();
+                L.marker(center, {
+                    icon: L.divIcon({ className: '', html: `<div class="intel-badge">${matches.length}</div>`, iconSize: [22, 22] })
+                }).addTo(map);
+            }
+        });
+    }
+
+    function updateHover(name, code) {
+        const d = worldData[code];
+        document.getElementById('card-name').innerText = d ? d.name.common : name;
+        document.getElementById('card-leader').innerText = leaderData[code]?.name || "N/A";
+        document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
+        const flagImg = document.getElementById('card-flag');
+        if (d && d.flags) { flagImg.src = d.flags.png; flagImg.style.display = 'block'; }
+        else { flagImg.style.display = 'none'; }
+        document.getElementById('hover-card').style.display = 'block';
+    }
+
+    function showIntel(name, lock = false) {
+        const matches = predictions.filter(p => {
+            const c = (p["Country/Region"] || "").toLowerCase();
+            const m = name.toLowerCase();
+            if ((m.includes("united states") || m === "usa") && (c.includes("usa") || c.includes("united states"))) return true;
+            return c.includes(m) || m.includes(c);
+        });
+        if (matches.length === 0) return;
+        document.getElementById('intel-title').innerText = `${name} (${matches.length})`;
+        document.getElementById('intel-body').innerHTML = matches.map(p => `
+            <div class="pred-box">
+                <div class="pred-meta"><span>${p["Date of Premonition"]}</span><span class="pred-cat">${p["Meta Data"]}</span></div>
+                <div class="pred-text">${p["Prediction Description"]}</div>
+            </div>
+        `).join('');
+        document.getElementById('intel-panel').style.display = 'block';
+        if (lock) isLocked = true;
+    }
+
+    function closeIntel() { isLocked = false; document.getElementById('intel-panel').style.display='none'; document.getElementById('hover-card').style.display='none'; }
+</script>
+</body>
+</html>
