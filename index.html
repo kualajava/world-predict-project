@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | v1.2.0</title>
+    <title>Global Data Project | v1.2.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #eef2f5; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        #map { height: 100vh; width: 100vw; background: #eef2f5; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #c9d2d9; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        #map { height: 100vh; width: 100vw; background: #c9d2d9; }
 
         /* Search Bar */
         #search-container {
@@ -16,11 +16,11 @@
         }
         #search-input {
             width: 100%; padding: 12px 20px; border-radius: 25px;
-            border: 1px solid #d1d9e0; background: rgba(255, 255, 255, 0.98);
-            color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid #b1bcc4; background: rgba(255, 255, 255, 0.98);
+            color: #2c3e50; font-size: 14px; outline: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
-        /* Popup Styling */
+        /* Dashboard Popup */
         .leaflet-popup-content-wrapper { background: #fff !important; color: #2c3e50 !important; border-radius: 8px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important; padding: 0 !important; }
         .leaflet-popup-content { margin: 12px !important; width: 210px !important; }
         .pop-container { display: flex; flex-direction: column; gap: 8px; }
@@ -36,22 +36,18 @@
 <body>
 
 <div id="search-container">
-    <input type="text" id="search-input" placeholder="Search country, ocean, or river...">
+    <input type="text" id="search-input" placeholder="Search country, leader, or ocean...">
 </div>
 
 <div id="map"></div>
-<div id="version-tag">v1.2.0 - Rivers & Oceans Fixed</div>
+<div id="version-tag">v1.2.1 - Ocean Labels & Rivers</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const map = L.map('map', { 
-        zoomSnap: 0.1, 
-        attributionControl: false 
-    }).setView([20, 0], 2.3);
+    const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.3);
     
-    // THE ATLAS LAYER: Detailed terrain, rivers, and ocean names
-    // Using a reliable provider that renders geography correctly
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    // CARTO VOYAGER: Specifically chosen for its clear Ocean labels and Rivers
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map);
 
     let worldData = {};
     let leaderData = {};
@@ -77,10 +73,10 @@
             .then(geoData => {
                 geoJsonLayer = L.geoJSON(geoData, {
                     style: { 
-                        fillColor: "#9dbb8a", // Earthy green
-                        weight: 1.5, 
-                        color: '#6e8b5e', 
-                        fillOpacity: 0.25 
+                        fillColor: "#9dbb8a", 
+                        weight: 1, 
+                        color: 'rgba(0,0,0,0.15)', 
+                        fillOpacity: 0.2 // Kept low so river lines show through the green
                     },
                     onEachFeature: (feature, layer) => {
                         layer.on('click', () => {
@@ -106,7 +102,7 @@
                             }
                         });
                         layer.on('mouseover', (e) => e.target.setStyle({ fillOpacity: 0.5, fillColor: "#3182ce" }));
-                        layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.25, fillColor: "#9dbb8a" }));
+                        layer.on('mouseout', (e) => e.target.setStyle({ fillOpacity: 0.2, fillColor: "#9dbb8a" }));
                     }
                 }).addTo(map);
             });
@@ -119,16 +115,4 @@
         geoJsonLayer.eachLayer(layer => {
             const countryName = (layer.feature.properties.name || "").toLowerCase();
             const code = (layer.feature.properties.iso_a3 || "").toUpperCase();
-            const leaderName = leaderData[code] ? leaderData[code].name.toLowerCase() : "";
-            if (countryName.includes(query) || leaderName.includes(query)) {
-                map.flyTo(layer.getBounds().getCenter(), 3);
-                layer.fire('click');
-            }
-        });
-    });
-
-    // Final check for rendering
-    window.onload = () => { setTimeout(() => { map.invalidateSize(); }, 300); };
-</script>
-</body>
-</html>
+            const leaderName = leaderData
