@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v1.3.4</title>
+    <title>Global Atlas | v1.3.5</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
@@ -20,7 +20,8 @@
         }
         .v-tag { color: #3182ce; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
 
-        #search-container { position: fixed; top: 20px; left: 20px; z-index: 9999; width: 280px; }
+        /* MOVED RIGHT: 80px from left to clear zoom buttons */
+        #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 280px; }
         #search-input { 
             width: 100%; padding: 12px 20px; border-radius: 25px; border: none;
             background: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none; font-size: 15px;
@@ -42,8 +43,8 @@
 <body>
 
 <div id="status-bar">
-    <span id="status-text">Safe Boot...</span>
-    <span class="v-tag">v1.3.4</span>
+    <span id="status-text">Ready...</span>
+    <span class="v-tag">v1.3.5</span>
 </div>
 
 <div id="search-container">
@@ -64,16 +65,12 @@
 <div id="map"></div>
 
 <script>
-    // 1. Core Variables
     const statusText = document.getElementById('status-text');
     const card = document.getElementById('hover-card');
     let map, geoJsonLayer, worldData = {}, leaderData = {};
 
-    // 2. Safe Initializer
-    function safeStart() {
+    function boot() {
         try {
-            statusText.innerText = "Engine: Loading...";
-            
             map = L.map('map', { 
                 zoomSnap: 0.1, 
                 attributionControl: false,
@@ -85,14 +82,13 @@
                 crossOrigin: true
             }).addTo(map);
 
-            loadCoreData();
-        } catch (err) {
-            statusText.innerText = "Error: Map Fail";
+            loadContent();
+        } catch (e) {
+            statusText.innerText = "Error: Engine Fail";
         }
     }
 
-    // 3. Data Loader
-    async function loadCoreData() {
+    async function loadContent() {
         const ts = new Date().getTime();
         try {
             const [csvRes, apiRes] = await Promise.all([
@@ -120,7 +116,7 @@
                     l.on({
                         mouseover: (e) => {
                             e.target.setStyle({ fillOpacity: 0.8 });
-                            showInfo(f.properties.iso_a3);
+                            display(f.properties.iso_a3);
                         },
                         mouseout: (e) => {
                             e.target.setStyle({ fillOpacity: 0.4 });
@@ -130,16 +126,15 @@
                 }
             }).addTo(map);
 
-            statusText.innerText = "Engine: Online";
-            setTimeout(() => { map.invalidateSize(); }, 500);
+            statusText.innerText = "Online";
+            setTimeout(() => { map.invalidateSize(); }, 400);
 
         } catch (e) {
-            statusText.innerText = "Error: Data Restricted";
+            statusText.innerText = "Offline Data";
         }
     }
 
-    // 4. UI Functions
-    function showInfo(code) {
+    function display(code) {
         const d = worldData[code];
         const lead = leaderData[code];
         if (d) {
@@ -151,7 +146,6 @@
         }
     }
 
-    // 5. Search Logic (Separated to prevent boot crash)
     document.getElementById('search-input').addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase().trim();
         if (term.length < 3 || !geoJsonLayer) return;
@@ -163,13 +157,12 @@
 
             if (countryName.includes(term) || leadName.includes(term)) {
                 map.flyTo(layer.getBounds().getCenter(), 4);
-                showInfo(code);
+                display(code);
             }
         });
     });
 
-    // Final Boot
-    window.onload = safeStart;
+    window.onload = boot;
 </script>
 </body>
 </html>
