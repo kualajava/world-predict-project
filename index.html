@@ -1,36 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project | Phase 4</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; }
-        .popup-content { font-family: sans-serif; text-align: center; color: #333; min-width: 150px; }
-        .popup-flag { font-size: 50px; margin-bottom: 5px; }
-        #version-tag { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #555; padding: 3px 8px; font-family: monospace; font-size: 10px; border-radius: 4px; z-index: 1000; }
-    </style>
-</head>
-<body>
-
-<div id="map"></div>
-<div id="version-tag">v1.0.6 - Live API Integration</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // version-tag: v1.0.7 - Data Merger Mode
     const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([25, 0], 2.3);
     let worldData = {};
+    let leaderData = {};
 
-    // 1. FETCH LIVE DATA (Population, Currency, Flags)
-    fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies')
-        .then(res => res.json())
-        .then(data => {
-            // Organize data by country code for fast lookup
-            data.forEach(c => { worldData[c.cca3] = c; });
-            loadMap(); // Only load the map once we have the data
+    // STEP 1: Fetch your private CSV leaders
+    async function init() {
+        const leaderRes = await fetch('leaders.csv');
+        const csvText = await leaderRes.text();
+        
+        // Simple CSV parser
+        csvText.split('\n').slice(1).forEach(line => {
+            const [code, leader, title] = line.split(',');
+            if(code) leaderData[code.trim()] = { leader, title };
         });
+
+        // STEP 2: Fetch Live Country Data
+        const liveRes = await fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies');
+        const liveData = await liveRes.json();
+        liveData.forEach(c => { worldData[c.cca3] = c; });
+
+        loadMap();
+    }
 
     function loadMap() {
         fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
@@ -41,24 +32,28 @@
                     onEachFeature: function (feature, layer) {
                         const code = feature.properties.iso_a3;
                         const live = worldData[code];
+                        const private = leaderData[code];
 
                         layer.on('click', () => {
                             if (live) {
-                                const population = live.population.toLocaleString();
-                                const currency = Object.keys(live.currencies)[0];
+                                const pop = live.population.toLocaleString();
+                                const curr = Object.keys(live.currencies)[0];
+                                const leader = private ? private.leader : "Data Pending";
+                                const title = private ? private.title : "Leader";
                                 
                                 layer.bindPopup(`
                                     <div class="popup-content">
-                                        <div class="popup-flag"><img src="${live.flags.png}" width="80"></div>
-                                        <h2>${live.name.common}</h2>
-                                        <p>👥 Pop: <strong>${population}</strong></p>
-                                        <p>💰 Currency: <strong>${currency}</strong></p>
-                                        <p>⚠️ Leader data loading...</p>
+                                        <img src="${live.flags.png}" width="80" style="border-radius:4px">
+                                        <h2 style="margin:10px 0">${live.name.common}</h2>
+                                        <p><strong>${title}:</strong> ${leader}</p>
+                                        <hr style="border:0; border-top:1px solid #eee">
+                                        <p>👥 Pop: <strong>${pop}</strong></p>
+                                        <p>💰 Currency: <strong>${curr}</strong></p>
                                     </div>
                                 `).openPopup();
                             }
                         });
-
+                        
                         layer.on({
                             mouseover: (e) => e.target.setStyle({ fillOpacity: 1, fillColor: "#3182ce" }),
                             mouseout: (e) => e.target.setStyle({ fillColor: "#1a1f26", fillOpacity: 0.7 })
@@ -67,6 +62,6 @@
                 }).addTo(map);
             });
     }
+
+    init();
 </script>
-</body>
-</html>
