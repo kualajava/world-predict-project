@@ -3,37 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.1.1</title>
+    <title>Global Atlas | v2.1.2</title>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #aad3df; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; }
+        /* Ensure map has a visible background even if tiles fail */
+        #map { height: 100vh; width: 100vw; position: absolute; top:0; left:0; z-index: 1; background: #aad3df; }
 
-        /* Left Hand Intelligence Panel */
         #intel-panel {
             position: fixed; top: 85px; left: 20px; z-index: 9999;
             width: 320px; max-height: calc(100vh - 150px);
-            background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
             color: white; padding: 0; display: none; overflow-y: auto;
             box-shadow: 0 10px 40px rgba(0,0,0,0.4);
         }
-        .intel-header { 
-            padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); 
-            background: rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 2;
-        }
+        .intel-header { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); position: sticky; top: 0; z-index: 2; }
         .intel-title { font-size: 14px; font-weight: 800; color: #f6e05e; text-transform: uppercase; letter-spacing: 1px; }
-        .prediction-entry { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s; }
-        .prediction-entry:hover { background: rgba(255,255,255,0.03); }
+        .prediction-entry { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .pred-meta { font-size: 10px; color: #94a3b8; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
         .pred-cat { color: #68d391; font-weight: bold; background: rgba(104, 211, 145, 0.1); padding: 2px 6px; border-radius: 4px; }
         .pred-desc { font-size: 13px; line-height: 1.6; color: #e2e8f0; }
-        .pred-author { font-size: 11px; color: #3182ce; margin-top: 8px; font-style: italic; opacity: 0.8; }
+        .pred-author { font-size: 11px; color: #3182ce; margin-top: 8px; font-style: italic; }
 
-        /* Core UI Components */
         #status-bar { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: rgba(0, 0, 0, 0.85); color: #00ff00; padding: 8px 14px; font-family: monospace; font-size: 11px; border-radius: 6px; display: flex; gap: 15px; border: 1px solid #444; }
         .v-tag { color: #f6e05e; font-weight: bold; border-left: 1px solid #444; padding-left: 15px; }
         #search-container { position: fixed; top: 20px; left: 80px; z-index: 9999; width: 320px; }
@@ -50,7 +45,7 @@
 
 <div id="status-bar">
     <span id="status-text">Atlas: Ready</span>
-    <span class="v-tag">v2.1.1</span>
+    <span class="v-tag">v2.1.2</span>
 </div>
 
 <div id="search-container">
@@ -87,47 +82,58 @@
     let map, geoJsonLayer, worldData = {}, leaderData = {}, predictions = [];
 
     const colors = { 'Africa': '#f6ad55', 'Americas': '#68d391', 'Asia': '#fc8181', 'Europe': '#63b3ed', 'Oceania': '#f6e05e' };
-
-    // Smart Matcher Dictionary
-    const aliasMap = {
-        "USA": "United States of America",
-        "United States": "United States of America",
-        "UK": "United Kingdom",
-        "UAE": "United Arab Emirates",
-        "Russia": "Russian Federation"
-    };
+    const aliasMap = { "USA": "United States of America", "United States": "United States of America", "UK": "United Kingdom", "UAE": "United Arab Emirates", "Russia": "Russian Federation" };
 
     function init() {
-        map = L.map('map', { zoomSnap: 0.1, attributionControl: false, worldCopyJump: true, fadeAnimation: false }).setView([20, 0], 2.2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { crossOrigin: true }).addTo(map);
+        // Safe Map Initialization
+        map = L.map('map', { 
+            zoomSnap: 0.1, 
+            attributionControl: false, 
+            worldCopyJump: true, 
+            fadeAnimation: false,
+            maxBounds: [[-85, -180], [85, 180]]
+        }).setView([20, 0], 2.2);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
+            crossOrigin: true,
+            errorTileUrl: 'https://via.placeholder.com/256?text=Tile+Error'
+        }).addTo(map);
+
         loadData();
     }
 
     async function loadData() {
         const ts = new Date().getTime();
+        statusText.innerText = "Atlas: Syncing Data...";
+
         try {
-            const [csvLeaders, apiCountries, csvPredictions] = await Promise.all([
-                fetch(`leaders.csv?v=${ts}`).then(r => r.text()),
-                fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json()),
-                fetch(`predictions.csv?v=${ts}`).then(r => r.text()) // Updated to predictions.csv
-            ]);
+            // Step 1: Fetch External API (RestCountries)
+            const apiRes = await fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,region`).then(r => r.json());
+            apiRes.forEach(c => worldData[c.cca3] = c);
 
-            csvLeaders.split('\n').slice(1).forEach(row => {
-                const p = row.split(',');
-                if (p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
-            });
-            apiCountries.forEach(c => worldData[c.cca3] = c);
+            // Step 2: Safe Fetch for Leaders CSV
+            try {
+                const csvLeaders = await fetch(`leaders.csv?v=${ts}`).then(r => r.text());
+                csvLeaders.split('\n').slice(1).forEach(row => {
+                    const p = row.split(',');
+                    if (p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+                });
+            } catch (e) { console.warn("Leaders CSV failed to load, skipping."); }
 
-            // Robust CSV Parsing
-            const lines = csvPredictions.split('\n');
-            const headers = lines[0].split(',');
-            predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
-                const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const obj = {};
-                headers.forEach((h, i) => obj[h.trim()] = values[i]?.replace(/"/g, '').trim());
-                return obj;
-            });
+            // Step 3: Safe Fetch for Predictions CSV
+            try {
+                const csvPredictions = await fetch(`predictions.csv?v=${ts}`).then(r => r.text());
+                const lines = csvPredictions.split('\n');
+                const headers = lines[0].split(',');
+                predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                    const obj = {};
+                    headers.forEach((h, i) => obj[h.trim()] = values[i]?.replace(/"/g, '').trim());
+                    return obj;
+                });
+            } catch (e) { console.warn("Predictions CSV failed to load, skipping."); }
 
+            // Step 4: Fetch GeoJSON
             const geo = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson').then(r => r.json());
 
             geoJsonLayer = L.geoJSON(geo, {
@@ -148,14 +154,15 @@
             }).addTo(map);
 
             statusText.innerText = "Atlas: Online";
-        } catch (e) { statusText.innerText = "Atlas: Sync Error"; }
+        } catch (e) { 
+            statusText.innerText = "Atlas: Critical Error";
+            console.error(e);
+        }
     }
 
     function updateUI(code, mapName) {
         const d = worldData[code];
         const lead = leaderData[code];
-        
-        // Right Card
         if (d) {
             document.getElementById('name').innerText = d.name.common;
             document.getElementById('leader').innerText = lead ? lead.name : "Data Pending";
@@ -164,12 +171,10 @@
             card.style.display = 'block';
         }
 
-        // Left Intelligence Panel (Using Smart Matching)
         const countryPreds = predictions.filter(p => {
             const csvLoc = p["Country/Region"] || "";
             const normalizedMapName = mapName.toLowerCase();
             const normalizedCSVLoc = csvLoc.toLowerCase();
-            
             return normalizedCSVLoc.includes(normalizedMapName) || 
                    normalizedMapName.includes(normalizedCSVLoc) ||
                    (aliasMap[csvLoc] && aliasMap[csvLoc].toLowerCase() === normalizedMapName);
@@ -181,3 +186,18 @@
                 <div class="prediction-entry">
                     <div class="pred-meta">
                         <span>${p["Date of Premonition"]}</span>
+                        <span class="pred-cat">${p["Meta Data"]}</span>
+                    </div>
+                    <div class="pred-desc">${p["Prediction Description"]}</div>
+                </div>
+            `).join('');
+            intelPanel.style.display = 'block';
+        } else {
+            intelPanel.style.display = 'none';
+        }
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
