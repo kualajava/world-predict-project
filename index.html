@@ -1,42 +1,67 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Data Project</title>
+    <title>Global Data Project | Phase 2</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100vw; background: #aad3df; }
-        .info-box {
-            position: absolute; bottom: 20px; left: 20px;
-            background: white; padding: 15px; border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1000;
+        body { margin: 0; padding: 0; background: #0b0e14; }
+        #map { height: 100vh; width: 100vw; background: #0b0e14; }
+        
+        /* Custom styling for the map borders */
+        .country-style {
+            transition: all 0.2s;
         }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-    <div class="info-box">
-        <b>Project POC</b><br>
-        Status: Online & Lightning Fast ⚡
-    </div>
+<div id="map"></div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        // Initialize the map centered on the world
-        const map = L.map('map').setView([20, 0], 2);
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Initialize map with a dark, clean look
+    const map = L.map('map', {
+        zoomSnap: 0.5,
+        wheelDebounceTime: 150
+    }).setView([20, 0], 2);
 
-        // Add a clean, free map layer (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+    // Styling for the countries
+    const geojsonStyle = {
+        fillColor: "#1a1f26", // Inner country color
+        weight: 1,            // Border thickness
+        opacity: 1,
+        color: '#4a5568',     // Border line color
+        fillOpacity: 0.7
+    };
 
-        // Simple check for mobile
-        if (window.innerWidth < 600) {
-            map.setZoom(1);
-        }
-    </script>
+    // Load the World Borders (GeoJSON)
+    fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+        .then(response => response.json())
+        .then(data => {
+            L.geoJSON(data, {
+                style: geojsonStyle,
+                onEachFeature: function (feature, layer) {
+                    // This sets us up for Phase 3 (Hovering)
+                    layer.on({
+                        mouseover: (e) => {
+                            const l = e.target;
+                            l.setStyle({
+                                fillOpacity: 1,
+                                fillColor: "#3182ce" // Highlights blue on hover
+                            });
+                        },
+                        mouseout: (e) => {
+                            const l = e.target;
+                            l.setStyle(geojsonStyle);
+                        }
+                    });
+                }
+            }).addTo(map);
+        });
+
+</script>
 </body>
 </html>
