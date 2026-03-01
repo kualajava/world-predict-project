@@ -1,26 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Data Project | v1.0.8</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; background: #0b0e14; overflow: hidden; }
+        #map { height: 100vh; width: 100vw; background: #0b0e14; }
+        
+        /* Popup Styling */
+        .popup-content { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; color: #333; min-width: 180px; }
+        .popup-flag { width: 100px; height: auto; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); margin-bottom: 10px; }
+        .stat-label { font-size: 11px; color: #888; text-transform: uppercase; margin-top: 8px; display: block; }
+        .stat-value { font-size: 14px; font-weight: bold; color: #222; }
+        
+        #version-tag {
+            position: absolute; bottom: 10px; right: 10px; background: rgba(0, 0, 0, 0.7);
+            color: #00ff00; padding: 3px 8px; font-family: monospace; font-size: 10px;
+            border-radius: 4px; z-index: 1000; border: 1px solid #004400;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="version-tag">v1.0.8 - CSV Integrated</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // version-tag: v1.0.7 - Data Merger Mode
     const map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([25, 0], 2.3);
     let worldData = {};
     let leaderData = {};
 
-    // STEP 1: Fetch your private CSV leaders
     async function init() {
-        const leaderRes = await fetch('leaders.csv');
-        const csvText = await leaderRes.text();
-        
-        // Simple CSV parser
-        csvText.split('\n').slice(1).forEach(line => {
-            const [code, leader, title] = line.split(',');
-            if(code) leaderData[code.trim()] = { leader, title };
-        });
+        try {
+            // 1. Fetch your leaders.csv
+            const leaderRes = await fetch('leaders.csv');
+            const csvText = await leaderRes.text();
+            
+            // Robust CSV Parser (handles \n and \r\n)
+            const rows = csvText.split(/\r?\n/);
+            rows.slice(1).forEach(row => {
+                const cols = row.split(',');
+                if (cols.length >= 2) {
+                    const code = cols[0].trim().toUpperCase();
+                    leaderData[code] = { 
+                        name: cols[1].trim(), 
+                        title: cols[2] ? cols[2].trim() : "Leader" 
+                    };
+                }
+            });
+            console.log("Loaded leaders for:", Object.keys(leaderData));
 
-        // STEP 2: Fetch Live Country Data
-        const liveRes = await fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies');
-        const liveData = await liveRes.json();
-        liveData.forEach(c => { worldData[c.cca3] = c; });
+            // 2. Fetch Live World Data
+            const liveRes = await fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies');
+            const liveData = await liveRes.json();
+            liveData.forEach(c => { worldData[c.cca3] = c; });
 
-        loadMap();
+            loadMap();
+        } catch (err) {
+            console.error("Initialization error:", err);
+        }
     }
 
     function loadMap() {
@@ -30,33 +71,46 @@
                 L.geoJSON(geoData, {
                     style: { fillColor: "#1a1f26", weight: 1, color: '#4a5568', fillOpacity: 0.7 },
                     onEachFeature: function (feature, layer) {
-                        const code = feature.properties.iso_a3;
+                        // Check both lowercase and uppercase property keys (common GeoJSON variation)
+                        const props = feature.properties;
+                        const code = (props.iso_a3 || props.ISO_A3 || "").toUpperCase();
+                        
                         const live = worldData[code];
-                        const private = leaderData[code];
+                        const leaderInfo = leaderData[code];
 
                         layer.on('click', () => {
                             if (live) {
                                 const pop = live.population.toLocaleString();
-                                const curr = Object.keys(live.currencies)[0];
-                                const leader = private ? private.leader : "Data Pending";
-                                const title = private ? private.title : "Leader";
+                                const curr = Object.keys(live.currencies)[0] || "N/A";
+                                const leaderName = leaderInfo ? leaderInfo.name : "Data Pending";
+                                const leaderTitle = leaderInfo ? leaderInfo.title : "Leader";
                                 
                                 layer.bindPopup(`
                                     <div class="popup-content">
-                                        <img src="${live.flags.png}" width="80" style="border-radius:4px">
-                                        <h2 style="margin:10px 0">${live.name.common}</h2>
-                                        <p><strong>${title}:</strong> ${leader}</p>
-                                        <hr style="border:0; border-top:1px solid #eee">
-                                        <p>👥 Pop: <strong>${pop}</strong></p>
-                                        <p>💰 Currency: <strong>${curr}</strong></p>
+                                        <img src="${live.flags.png}" class="popup-flag">
+                                        <h2 style="margin:0 0 10px 0">${live.name.common}</h2>
+                                        
+                                        <span class="stat-label">${leaderTitle}</span>
+                                        <span class="stat-value">${leaderName}</span>
+                                        
+                                        <div style="display:flex; justify-content: space-around; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                                            <div>
+                                                <span class="stat-label">Population</span>
+                                                <span class="stat-value" style="font-size:12px">${pop}</span>
+                                            </div>
+                                            <div>
+                                                <span class="stat-label">Currency</span>
+                                                <span class="stat-value" style="font-size:12px">${curr}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 `).openPopup();
                             }
                         });
-                        
+
                         layer.on({
                             mouseover: (e) => e.target.setStyle({ fillOpacity: 1, fillColor: "#3182ce" }),
-                            mouseout: (e) => e.target.setStyle({ fillColor: "#1a1f26", fillOpacity: 0.7 })
+                            mouseout: (e) => e.target.setStyle({ fillOpacity: 0.7, fillColor: "#1a1f26" })
                         });
                     }
                 }).addTo(map);
@@ -65,3 +119,5 @@
 
     init();
 </script>
+</body>
+</html>
