@@ -2,72 +2,80 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.4.4</title>
+    <title>Global Atlas | v2.4.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --panel-bg: #0f172a; --accent: #facc15; --text: #f8fafc; --danger: #ef4444; }
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
         
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #000; z-index: 3000; overflow: hidden; border-bottom: 1px solid #1e293b; display: flex; }
+        /* TICKER & TOOLBAR */
+        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #000; z-index: 3000; border-bottom: 1px solid #1e293b; display: flex; }
         #ticker-label { background: var(--accent); color: #000; padding: 0 15px; line-height: 32px; font-weight: 900; font-size: 10px; z-index: 3001; }
         #ticker-scroll { white-space: nowrap; line-height: 32px; color: #64748b; font-size: 11px; animation: scroll 60s linear infinite; padding-left: 100%; }
         @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-
         #toolbar { position: fixed; top: 32px; left: 0; width: 100%; height: 40px; background: #1e293b; z-index: 2500; display: flex; align-items: center; padding: 0 20px; gap: 20px; border-bottom: 1px solid #334155; }
         #search-input { background: #0f172a; border: 1px solid #334155; color: white; padding: 4px 12px; border-radius: 4px; width: 250px; font-size: 13px; }
-        #debug-status { font-size: 10px; font-weight: bold; color: #22c55e; text-transform: uppercase; letter-spacing: 1px; }
 
+        /* MAP & MARKERS */
         #map { position: absolute; top: 72px; bottom: 0; left: 0; right: 0; z-index: 1; }
         .map-dimmed { opacity: 0.15; filter: grayscale(1) blur(5px); pointer-events: none; }
         .heat-badge { background: var(--accent) !important; border: 2px solid #000 !important; border-radius: 50% !important; color: #000 !important; font-weight: 900 !important; font-size: 13px !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 0 15px var(--accent); cursor: pointer; }
 
-        #intel-panel { position: fixed; top: 85px; left: 20px; width: 420px; height: 80vh; background: var(--panel-bg); color: var(--text); display: none; flex-direction: column; z-index: 2000; border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 0 50px rgba(0,0,0,1); }
-        #hover-card { position: fixed; top: 85px; right: 20px; width: 340px; background: white; border-radius: 12px; padding: 20px; display: none; z-index: 1999; border: 1px solid #cbd5e1; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        
-        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 8px 0; font-size: 12px; color: #475569; }
+        /* LEFT INTEL PANEL */
+        #intel-panel { position: fixed; top: 85px; left: 20px; width: 450px; height: 80vh; background: var(--panel-bg); color: var(--text); display: none; flex-direction: column; z-index: 2000; border: 1px solid #334155; border-left: 4px solid var(--accent); border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        .intel-header { padding: 15px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        .intel-scroll { overflow-y: auto; flex-grow: 1; padding: 0; }
+        .prediction-card { padding: 20px; border-bottom: 1px solid #1e293b; transition: background 0.2s; }
+        .prediction-card:hover { background: #1e293b; }
+        .pred-meta { font-size: 10px; color: var(--accent); font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .pred-title { font-size: 15px; font-weight: bold; color: #fff; margin-bottom: 8px; line-height: 1.3; }
+        .pred-desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+        .pred-footer { margin-top: 10px; font-size: 11px; color: #64748b; font-style: italic; }
+
+        /* RIGHT DATA CARD */
+        #hover-card { position: fixed; top: 85px; right: 20px; width: 340px; background: white; border-radius: 12px; padding: 20px; display: none; z-index: 1999; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
+        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 10px 0; font-size: 12px; color: #475569; }
         .stat-val { font-weight: 700; color: #0f172a; }
-        .intel-item { margin-bottom: 20px; border-bottom: 1px solid #1e293b; padding-bottom: 15px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
         
-        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 4000; background: #334155; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; }
+        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 4000; background: #334155; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; opacity: 0.5; }
     </style>
 </head>
 <body>
 
-<div id="ver-tag">BUILD v2.4.4</div>
+<div id="ver-tag">BUILD v2.4.5</div>
 
 <div id="ticker-wrap">
-    <div id="ticker-label">LIVE INTEL</div>
-    <div id="ticker-scroll" id="ticker-text">CALIBRATING ECONOMIC SENSORS... RESTORING CURRENCY ISO... v2.4.4 ONLINE...</div>
+    <div id="ticker-label">WORLD STREAM</div>
+    <div id="ticker-scroll">RE-ESTABLISHING ECONOMIC DATA BRIDGE... v2.4.5 ACTIVE... BYPASSING CORS RESTRICTIONS...</div>
 </div>
 
 <div id="toolbar">
     <input type="text" id="search-input" placeholder="Search Country..." onkeyup="handleSearch(event)">
-    <div id="debug-status">STATUS: CONNECTING</div>
+    <div id="debug-status" style="font-size:10px; font-weight:bold; color:#22c55e;">STATUS: ENGINE NOMINAL</div>
 </div>
 
 <div id="intel-panel">
-    <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-radius:10px 10px 0 0;">
-        <b id="intel-title" style="color:var(--accent); text-transform:uppercase;">INTEL FEED</b>
+    <div class="intel-header">
+        <b id="intel-title" style="letter-spacing:1px;">INTEL REPORT</b>
         <button onclick="closeUI()" style="background:var(--danger); color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✕</button>
     </div>
-    <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:20px;"></div>
+    <div id="intel-body" class="intel-scroll"></div>
 </div>
 
 <div id="hover-card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
         <div style="display:flex; align-items:center; gap:10px;">
             <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
             <b id="card-name" style="font-size:18px; color:#1e40af;"></b>
         </div>
-        <button onclick="closeUI()" style="border:none; background:none; color:#94a3b8; cursor:pointer; font-size:18px;">✕</button>
+        <button onclick="closeUI()" style="border:none; background:none; color:#cbd5e1; cursor:pointer; font-size:20px;">✕</button>
     </div>
-    <div class="stat-row"><span>Currency</span><span class="stat-val" id="card-cur">--</span></div>
+    <div class="stat-row"><span>Currency ISO</span><span class="stat-val" id="card-cur">--</span></div>
     <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader">--</span></div>
     <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
-    <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">FETCHING...</span></div>
-    <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">FETCHING...</span></div>
-    <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; color:#475569;">CLOSE COUNTRY</button>
+    <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
+    <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
+    <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; color:#475569;">CLOSE DATA</button>
 </div>
 
 <div id="map"></div>
@@ -79,28 +87,28 @@
 
     function clean(str) { return str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : ''; }
 
-    function logDebug(msg, isError = false) {
-        const el = document.getElementById('debug-status');
-        el.innerText = `STATUS: ${msg}`;
-        el.style.color = isError ? '#f87171' : '#22c55e';
-    }
-
     function initMap() {
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.5 }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.4 }).addTo(map);
         loadData();
     }
 
     async function loadData() {
         const ts = Date.now();
         try {
+            // Predictions with columns mapping
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
-            predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => ({
-                raw: line, clean: clean(line)
-            }));
-            
+            predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
+                const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                return {
+                    no: v[0], author: v[1], title: v[2], date: v[3], url: v[4],
+                    country: v[5], meta: v[6], from: v[7], to: v[8], desc: v[9],
+                    cleanRow: clean(line)
+                };
+            });
+
             fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
                 t.split('\n').slice(1).forEach(row => {
                     const p = row.split(',');
@@ -124,15 +132,14 @@
             fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,capital,population,currencies`).then(r => r.json()).then(data => {
                 data.forEach(c => worldData[c.cca3] = c);
                 drawIcons();
-                logDebug(`${predictions.length} PREDICTIONS READY`);
             });
-        } catch (e) { logDebug("DATA SYNC ERROR", true); }
+        } catch (e) { console.error(e); }
     }
 
     function drawIcons() {
         geoLayer.eachLayer(layer => {
             const countryKey = clean(layer.feature.properties.name);
-            const matches = predictions.filter(p => p.clean.includes(countryKey));
+            const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
             if (matches.length > 0) {
                 L.marker(layer.getBounds().getCenter(), { 
                     icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
@@ -144,62 +151,65 @@
         });
     }
 
-    async function updateUI(name, iso) {
+    function updateUI(name, iso) {
         const d = worldData[iso];
         const countryKey = clean(name);
-        const matches = predictions.filter(p => p.clean.includes(countryKey));
+        const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
         
         document.getElementById('card-name').innerText = name;
         document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
         document.getElementById('card-leader').innerText = leaderData[countryKey] || "--";
         document.getElementById('card-flag').src = d?.flags?.png || "";
         
-        // Fix Currency ISO
         if (d?.currencies) {
-            const curCode = Object.keys(d.currencies)[0];
-            document.getElementById('card-cur').innerText = `${curCode} (${d.currencies[curCode].symbol || ''})`;
-        } else { document.getElementById('card-cur').innerText = "--"; }
+            const code = Object.keys(d.currencies)[0];
+            document.getElementById('card-cur').innerText = `${code} (${d.currencies[code].symbol || ''})`;
+            // Trigger economic fetch using the ISO code
+            fetchEconomicData(iso);
+        }
 
         document.getElementById('hover-card').style.display = 'block';
-        fetchEconomicData(iso);
 
         const panel = document.getElementById('intel-panel');
         if (matches.length > 0) {
             panel.style.display = 'flex';
-            document.getElementById('intel-title').innerText = name + " INTEL";
+            document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
             document.getElementById('intel-body').innerHTML = matches.map(p => `
-                <div class="intel-item">${p.raw.split(',').slice(2).join(',').replace(/"/g, '')}</div>
+                <div class="prediction-card">
+                    <div class="pred-meta">${p.author} • ${p.date || 'No Date'}</div>
+                    <div class="pred-title">${p.title.replace(/"/g,'')}</div>
+                    <div class="pred-desc">${p.desc ? p.desc.replace(/"/g,'') : 'No description provided.'}</div>
+                    <div class="pred-footer">Range: ${p.from || '?'} to ${p.to || '?'} • Tag: ${p.meta || 'General'}</div>
+                </div>
             `).join('');
         } else { panel.style.display = 'none'; }
     }
 
-    async function fetchEconomicData(iso) {
+    // JSONP Strategy for World Bank to bypass CORS hangs
+    function fetchEconomicData(iso) {
         if (!iso || iso === "-99") return;
         document.getElementById('card-gdp').innerText = "QUERYING...";
         document.getElementById('card-inf').innerText = "QUERYING...";
-        
-        try {
-            // Scanning 2020-2024 to catch latest non-null values
-            const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&date=2020:2024`);
-            const data = await res.json();
-            
-            if (data && data[1]) {
-                let gdpFound = false, infFound = false;
-                data[1].forEach(item => {
-                    if (item.value && item.indicator.id === "NY.GDP.MKTP.CD" && !gdpFound) {
-                        document.getElementById('card-gdp').innerText = "$" + (item.value / 1e12).toFixed(2) + "T";
-                        gdpFound = true;
-                    }
-                    if (item.value && item.indicator.id === "FP.CPI.TOTL.ZG" && !infFound) {
-                        document.getElementById('card-inf').innerText = item.value.toFixed(1) + "%";
-                        infFound = true;
-                    }
-                });
-                if(!gdpFound) document.getElementById('card-gdp').innerText = "N/A";
-                if(!infFound) document.getElementById('card-inf').innerText = "N/A";
-            }
-        } catch (e) { logDebug("WB API TIMEOUT", true); }
+
+        const script = document.createElement('script');
+        script.src = `https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=jsonp&prefix=wbCallback&date=2021:2024`;
+        document.body.appendChild(script);
+        document.body.removeChild(script);
     }
+
+    window.wbCallback = function(response) {
+        if (response && response[1]) {
+            let gdp = "N/A", inf = "N/A";
+            response[1].forEach(item => {
+                if (item.value) {
+                    if (item.indicator.id === "NY.GDP.MKTP.CD" && gdp === "N/A") gdp = "$" + (item.value / 1e12).toFixed(2) + "T";
+                    if (item.indicator.id === "FP.CPI.TOTL.ZG" && inf === "N/A") inf = item.value.toFixed(1) + "%";
+                }
+            });
+            document.getElementById('card-gdp').innerText = gdp;
+            document.getElementById('card-inf').innerText = inf;
+        }
+    };
 
     function handleSearch(e) {
         if(e.key === "Enter") {
