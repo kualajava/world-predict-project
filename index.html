@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.3.4-Shield</title>
+    <title>Global Atlas | v2.3.4-Anchor</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -16,7 +16,8 @@
         #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; z-index: 10011; }
         #ticker-container { flex-grow: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
         #ticker-content { white-space: nowrap; position: absolute; left: 0; will-change: transform; transform: translate3d(0,0,0); color: #94a3b8; font-size: 11px; }
-        .ticker-item { display: inline-block; margin-right: 60px; cursor: pointer; }
+        .ticker-item { display: inline-block; margin-right: 60px; cursor: pointer; transition: color 0.2s; }
+        .ticker-item:hover { color: #facc15; }
 
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; }
         
@@ -41,10 +42,10 @@
 
 <div id="ticker-wrap">
     <div id="ticker-label">Live Feed</div>
-    <div id="ticker-container"><div id="ticker-content"></div></div>
+    <div id="ticker-container"><div id="ticker-content" onmouseover="isPaused=true" onmouseout="isPaused=false"></div></div>
 </div>
 
-<div id="log">Status: Initializing...</div>
+<div id="log">Status: Connecting...</div>
 <div id="map"></div>
 
 <div id="hover-card">
@@ -72,32 +73,30 @@
     let predictions = [], worldData = {}, leaderData = {};
     let tickerPos = 0, isPaused = false;
 
-    // The most stable boot order possible
+    // Manual overrides for problematic centroids
+    const manualCoords = {
+        "Russia": [55.75, 37.61], // Moscow
+        "United Kingdom": [51.50, -0.12], // London
+        "USA": [38.89, -77.03], // DC
+        "United States": [38.89, -77.03]
+    };
+
     window.onload = () => {
-        lb.innerText = "Status: Connecting...";
-        if (typeof L !== 'undefined') {
-            initMap();
-        } else {
-            lb.innerText = "Status: Library Error";
-        }
+        if (typeof L !== 'undefined') initMap();
+        else lb.innerText = "Status: Library Error";
     };
 
     function initMap() {
-        lb.innerText = "Status: Mapping Earth...";
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-        
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
-
         fetchData();
     }
 
     async function fetchData() {
         const ts = Date.now();
-        lb.innerText = "Status: Loading Intel...";
-
+        lb.innerText = "Status: Syncing Data...";
         try {
-            // Load Geography
             const geoRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
             const geoData = await geoRes.json();
             
@@ -112,7 +111,6 @@
                 }
             }).addTo(map);
 
-            // Load CSV
             const predRes = await fetch(`predictions.csv?v=${ts}`);
             const txt = await predRes.text();
             const lines = txt.split('\n');
@@ -123,7 +121,7 @@
                 return o;
             });
 
-            // Restore Metadata
+            // Metadata loads
             fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
                 t.split('\n').slice(1).forEach(row => {
                     const p = row.split(',');
@@ -135,11 +133,7 @@
             drawHeatBadges();
             runTicker();
             lb.innerText = "Status: Operational (v2.3.4)";
-
-        } catch (e) {
-            lb.innerText = "Status: Sync Warning. Map Active.";
-            console.error(e);
-        }
+        } catch (e) { lb.innerText = "Status: Data Link Error"; }
     }
 
     function drawHeatBadges() {
@@ -147,8 +141,9 @@
             const n = layer.feature.properties.name;
             const matches = predictions.filter(p => p["Country/Region"]?.toLowerCase() === n.toLowerCase());
             if (matches.length > 0) {
+                let pos = manualCoords[n] || layer.getBounds().getCenter();
                 let heat = matches.length >= 10 ? "heat-high" : (matches.length >= 5 ? "heat-med" : "heat-low");
-                L.marker(layer.getBounds().getCenter(), { 
+                L.marker(pos, { 
                     icon: L.divIcon({ className: '', html: `<div class="intel-badge ${heat}">${matches.length}</div>`, iconSize: [22, 22] }) 
                 }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); jumpTo(n, layer.feature.properties.iso_a3); });
             }
@@ -156,13 +151,24 @@
     }
 
     function jumpTo(name, iso) {
+        // TOGGLE: If same country clicked, close.
         if (isLocked && currentCountry === name) { closeIntel(); return; }
+        
         isLocked = true; currentCountry = name;
         document.getElementById('map').classList.add('map-dimmed');
-        let center = [20,0];
-        geoLayer.eachLayer(l => { if(l.feature.properties.name.toLowerCase() === name.toLowerCase()) center = l.getBounds().getCenter(); });
+        
+        let center = manualCoords[name] || [20,0];
+        let foundIso = iso;
+        
+        geoLayer.eachLayer(l => { 
+            if(l.feature.properties.name.toLowerCase() === name.toLowerCase()) {
+                if(!manualCoords[name]) center = l.getBounds().getCenter();
+                if(!foundIso) foundIso = l.feature.properties.iso_a3;
+            }
+        });
+
         map.flyTo(center, 4.5);
-        updateHover(name, iso);
+        updateHover(name, foundIso);
         showIntel(name, true);
     }
 
@@ -195,6 +201,7 @@
     function showIntel(name, lock = false) {
         const matches = predictions.filter(p => p["Country/Region"]?.toLowerCase() === name.toLowerCase());
         if (matches.length === 0) return;
+        document.getElementById('intel-title').innerText = `${name.toUpperCase()} FEED`;
         document.getElementById('intel-body').innerHTML = matches.map(p => `<div class="pred-box"><div class="pred-text">${p["Prediction Description"]}</div></div>`).join('');
         document.getElementById('intel-panel').style.display = 'flex';
         if (lock) isLocked = true;
@@ -205,6 +212,11 @@
         document.getElementById('hover-card').style.display='none'; 
         document.getElementById('intel-panel').style.display='none'; 
         document.getElementById('map').classList.remove('map-dimmed'); 
+    }
+    function filterIntel() {
+        const q = document.getElementById('intel-search').value.toLowerCase();
+        const boxes = document.querySelectorAll('.pred-box');
+        boxes.forEach(b => b.style.display = b.innerText.toLowerCase().includes(q) ? 'block' : 'none');
     }
 </script>
 </body>
