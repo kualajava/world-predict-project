@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.4.3</title>
+    <title>Global Atlas | v2.4.4</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --panel-bg: #0f172a; --accent: #facc15; --text: #f8fafc; --danger: #ef4444; }
@@ -25,51 +25,49 @@
         #intel-panel { position: fixed; top: 85px; left: 20px; width: 420px; height: 80vh; background: var(--panel-bg); color: var(--text); display: none; flex-direction: column; z-index: 2000; border: 2px solid var(--accent); border-radius: 12px; box-shadow: 0 0 50px rgba(0,0,0,1); }
         #hover-card { position: fixed; top: 85px; right: 20px; width: 340px; background: white; border-radius: 12px; padding: 20px; display: none; z-index: 1999; border: 1px solid #cbd5e1; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
         
-        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 10px 0; font-size: 12px; color: #475569; }
+        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 8px 0; font-size: 12px; color: #475569; }
         .stat-val { font-weight: 700; color: #0f172a; }
         .intel-item { margin-bottom: 20px; border-bottom: 1px solid #1e293b; padding-bottom: 15px; font-size: 14px; line-height: 1.6; color: #cbd5e1; }
-        .close-x { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: bold; }
         
         #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 4000; background: #334155; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div id="ver-tag">BUILD v2.4.3</div>
+<div id="ver-tag">BUILD v2.4.4</div>
 
 <div id="ticker-wrap">
-    <div id="ticker-label">WORLD FEED</div>
-    <div id="ticker-scroll">SYNCING ECONOMIC CHANNELS... v2.4.3 READY... DATA STREAM ACTIVE...</div>
+    <div id="ticker-label">LIVE INTEL</div>
+    <div id="ticker-scroll" id="ticker-text">CALIBRATING ECONOMIC SENSORS... RESTORING CURRENCY ISO... v2.4.4 ONLINE...</div>
 </div>
 
 <div id="toolbar">
     <input type="text" id="search-input" placeholder="Search Country..." onkeyup="handleSearch(event)">
-    <div id="debug-status">STATUS: INITIALIZING...</div>
+    <div id="debug-status">STATUS: CONNECTING</div>
 </div>
 
 <div id="intel-panel">
     <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-radius:10px 10px 0 0;">
-        <b id="intel-title" style="color:var(--accent); text-transform:uppercase;">INTEL</b>
-        <button onclick="closeUI()" class="close-x">CLOSE ✕</button>
+        <b id="intel-title" style="color:var(--accent); text-transform:uppercase;">INTEL FEED</b>
+        <button onclick="closeUI()" style="background:var(--danger); color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">✕</button>
     </div>
     <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:20px;"></div>
 </div>
 
 <div id="hover-card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
-        <div style="display:flex; align-items:center; gap:12px;">
-            <img src="" id="card-flag" style="width:40px; border:1px solid #eee; border-radius:4px;">
-            <b id="card-name" style="font-size:20px; color:#1e40af;"></b>
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
+            <b id="card-name" style="font-size:18px; color:#1e40af;"></b>
         </div>
-        <button onclick="closeUI()" style="border:none; background:none; color:#cbd5e1; cursor:pointer; font-size:16px;">✕</button>
+        <button onclick="closeUI()" style="border:none; background:none; color:#94a3b8; cursor:pointer; font-size:18px;">✕</button>
     </div>
-    <div class="stat-row"><span>Region</span><span class="stat-val" id="card-region">--</span></div>
-    <div class="stat-row"><span>Capital</span><span class="stat-val" id="card-cap">--</span></div>
+    <div class="stat-row"><span>Currency</span><span class="stat-val" id="card-cur">--</span></div>
     <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader">--</span></div>
     <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
-    <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
-    <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
-    <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:8px; border-radius:6px; cursor:pointer; font-weight:bold; color:#475569; font-size:11px;">CLOSE DATA</button>
+    <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">FETCHING...</span></div>
+    <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">FETCHING...</span></div>
+    <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; color:#475569;">CLOSE COUNTRY</button>
 </div>
 
 <div id="map"></div>
@@ -97,14 +95,12 @@
     async function loadData() {
         const ts = Date.now();
         try {
-            // 1. Predictions
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
             predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => ({
                 raw: line, clean: clean(line)
             }));
             
-            // 2. Leaders
             fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
                 t.split('\n').slice(1).forEach(row => {
                     const p = row.split(',');
@@ -112,7 +108,6 @@
                 });
             });
 
-            // 3. Geography
             const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
             const gData = await gRes.json();
             geoLayer = L.geoJSON(gData, {
@@ -126,14 +121,12 @@
                 }
             }).addTo(map);
 
-            // 4. Meta
-            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,capital,population,region`).then(r => r.json()).then(data => {
+            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,capital,population,currencies`).then(r => r.json()).then(data => {
                 data.forEach(c => worldData[c.cca3] = c);
                 drawIcons();
-                logDebug(`${predictions.length} RECORDS LOADED`);
+                logDebug(`${predictions.length} PREDICTIONS READY`);
             });
-
-        } catch (e) { logDebug("SYSTEM SYNC ERROR", true); }
+        } catch (e) { logDebug("DATA SYNC ERROR", true); }
     }
 
     function drawIcons() {
@@ -141,10 +134,9 @@
             const countryKey = clean(layer.feature.properties.name);
             const matches = predictions.filter(p => p.clean.includes(countryKey));
             if (matches.length > 0) {
-                const marker = L.marker(layer.getBounds().getCenter(), { 
+                L.marker(layer.getBounds().getCenter(), { 
                     icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
-                }).addTo(map);
-                marker.on('click', (e) => { 
+                }).addTo(map).on('click', (e) => { 
                     L.DomEvent.stopPropagation(e); 
                     lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3); 
                 });
@@ -158,54 +150,55 @@
         const matches = predictions.filter(p => p.clean.includes(countryKey));
         
         document.getElementById('card-name').innerText = name;
-        document.getElementById('card-region').innerText = d?.region || "--";
-        document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "--";
         document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
         document.getElementById('card-leader').innerText = leaderData[countryKey] || "--";
         document.getElementById('card-flag').src = d?.flags?.png || "";
-        document.getElementById('hover-card').style.display = 'block';
+        
+        // Fix Currency ISO
+        if (d?.currencies) {
+            const curCode = Object.keys(d.currencies)[0];
+            document.getElementById('card-cur').innerText = `${curCode} (${d.currencies[curCode].symbol || ''})`;
+        } else { document.getElementById('card-cur').innerText = "--"; }
 
+        document.getElementById('hover-card').style.display = 'block';
         fetchEconomicData(iso);
 
         const panel = document.getElementById('intel-panel');
         if (matches.length > 0) {
             panel.style.display = 'flex';
-            document.getElementById('intel-title').innerText = name;
+            document.getElementById('intel-title').innerText = name + " INTEL";
             document.getElementById('intel-body').innerHTML = matches.map(p => `
-                <div class="intel-item">
-                    ${p.raw.split(',').slice(2).join(',').replace(/"/g, '')}
-                </div>
+                <div class="intel-item">${p.raw.split(',').slice(2).join(',').replace(/"/g, '')}</div>
             `).join('');
         } else { panel.style.display = 'none'; }
     }
 
     async function fetchEconomicData(iso) {
         if (!iso || iso === "-99") return;
-        // World Bank API Fetch for GDP and Inflation
-        const indicators = "NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG";
+        document.getElementById('card-gdp').innerText = "QUERYING...";
+        document.getElementById('card-inf').innerText = "QUERYING...";
+        
         try {
-            const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/${indicators}?format=json&date=2021:2024`);
+            // Scanning 2020-2024 to catch latest non-null values
+            const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&date=2020:2024`);
             const data = await res.json();
             
             if (data && data[1]) {
+                let gdpFound = false, infFound = false;
                 data[1].forEach(item => {
-                    if (item.value) {
-                        if (item.indicator.id === "NY.GDP.MKTP.CD") {
-                            document.getElementById('card-gdp').innerText = "$" + (item.value / 1e12).toFixed(2) + "T";
-                        }
-                        if (item.indicator.id === "FP.CPI.TOTL.ZG") {
-                            document.getElementById('card-inf').innerText = item.value.toFixed(1) + "%";
-                        }
+                    if (item.value && item.indicator.id === "NY.GDP.MKTP.CD" && !gdpFound) {
+                        document.getElementById('card-gdp').innerText = "$" + (item.value / 1e12).toFixed(2) + "T";
+                        gdpFound = true;
+                    }
+                    if (item.value && item.indicator.id === "FP.CPI.TOTL.ZG" && !infFound) {
+                        document.getElementById('card-inf').innerText = item.value.toFixed(1) + "%";
+                        infFound = true;
                     }
                 });
-            } else {
-                document.getElementById('card-gdp').innerText = "N/A";
-                document.getElementById('card-inf').innerText = "N/A";
+                if(!gdpFound) document.getElementById('card-gdp').innerText = "N/A";
+                if(!infFound) document.getElementById('card-inf').innerText = "N/A";
             }
-        } catch (e) { 
-            console.error("Eco fetch error", e);
-            logDebug("API CONNECTION WEAK", true);
-        }
+        } catch (e) { logDebug("WB API TIMEOUT", true); }
     }
 
     function handleSearch(e) {
