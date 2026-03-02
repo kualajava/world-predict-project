@@ -2,37 +2,59 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.4.4</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Atlas | v2.4.5</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
         
-        /* UI Priority Layers */
-        #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
+        #log { position: fixed; bottom: 10px; right: 10px; z-index: 10002; background: rgba(0,0,0,0.8); color: #4ade80; padding: 5px 12px; font-size: 10px; border-radius: 4px; font-family: monospace; pointer-events: none; }
+        
+        /* MOBILE OPTIMIZED SEARCH */
         .leaflet-top.leaflet-left { z-index: 10001 !important; margin-top: 10px; }
+
+        /* RIGHT SIDE HOVER CARD - Now with Close Button */
+        #hover-card { 
+            position: fixed; top: 70px; right: 15px; z-index: 9999; 
+            background: white; padding: 15px; border-radius: 12px; display: none; 
+            width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0;
+        }
+        .close-btn { position: absolute; top: 10px; right: 10px; background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; }
+
+        /* LEFT SIDE INTEL PANEL */
+        #intel-panel { 
+            position: fixed; top: 70px; left: 15px; z-index: 9998; 
+            width: 320px; max-height: 60vh; background: rgba(15, 23, 42, 0.98); 
+            border-radius: 12px; border: 1px solid #334155; color: white; 
+            display: none; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+            backdrop-filter: blur(10px); 
+        }
+
+        /* MOBILE ADJUSTMENTS */
+        @media (max-width: 600px) {
+            #intel-panel { width: calc(100% - 30px); left: 15px; top: auto; bottom: 80px; max-height: 40vh; }
+            #hover-card { width: calc(100% - 30px); right: 15px; top: 70px; }
+        }
         
-        #hover-card { position: fixed; top: 80px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid #ddd; pointer-events: none; }
-        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9998; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.96); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
-        
-        .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
-        .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
+        .intel-header { padding: 12px 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
+        .pred-box { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .pred-text { font-size: 13px; line-height: 1.5; color: #f1f5f9; }
         .intel-badge { background: #f6e05e; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(246,224,94,0.5); cursor: pointer; }
     </style>
 </head>
 <body>
 
-<div id="log">Status: Initializing Core...</div>
+<div id="log">Status: Initializing...</div>
 <div id="map"></div>
 
 <div id="hover-card">
+    <button class="close-btn" onclick="closeIntel()">✕</button>
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <img src="" id="card-flag" style="width:40px; border:1px solid #eee; display:none;">
+        <img src="" id="card-flag" style="width:35px; border:1px solid #eee; display:none;">
         <b id="card-name" style="font-size:16px; color:#1a202c;"></b>
     </div>
     <div style="font-size:12px; margin-bottom:4px;"><span style="color:#64748b; font-weight:600;">Leader:</span> <span id="card-leader" style="color:#3182ce; font-weight:700;"></span></div>
@@ -61,32 +83,32 @@
         "United Kingdom": [55.3781, -3.4360]
     };
 
-    // Fail-safe init
-    window.onload = function() {
-        lb.innerText = "Status: Booting Map Engine...";
-        setTimeout(init, 500); 
-    };
+    window.onload = () => { setTimeout(init, 400); };
 
     function init() {
-        try {
-            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-            
-            // Layer 1: Topography
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
-            
-            // Layer 2: Labels
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
+        // Load saved position or default
+        const savedLat = localStorage.getItem('map_lat') || 20;
+        const savedLng = localStorage.getItem('map_lng') || 0;
+        const savedZoom = localStorage.getItem('map_zoom') || 2.2;
 
-            // Layer 3: Search
-            L.Control.geocoder({ defaultMarkGeocode: false, placeholder: "Search..." })
-            .on('markgeocode', function(e) { map.flyTo(e.geocode.center, 5); })
-            .addTo(map);
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([savedLat, savedLng], savedZoom);
+        
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
 
-            lb.innerText = "Status: Mapping Borders...";
-            loadGeography();
-        } catch (e) {
-            lb.innerText = "Status: ERROR - " + e.message;
-        }
+        L.Control.geocoder({ defaultMarkGeocode: false, placeholder: "Search..." })
+        .on('markgeocode', (e) => { map.flyTo(e.geocode.center, 5); })
+        .addTo(map);
+
+        // SAVE POSITION ON MOVE
+        map.on('moveend', () => {
+            const center = map.getCenter();
+            localStorage.setItem('map_lat', center.lat);
+            localStorage.setItem('map_lng', center.lng);
+            localStorage.setItem('map_zoom', map.getZoom());
+        });
+
+        loadGeography();
     }
 
     function loadGeography() {
@@ -99,12 +121,12 @@
                         const name = f.properties.name;
                         layer.on({
                             mouseover: () => {
-                                layer.setStyle({ fillOpacity: 0.1, fillColor: '#fff' });
-                                updateHover(name, f.properties.iso_a3);
-                                if(!isLocked) showIntel(name, false); 
+                                if(!isLocked) {
+                                    updateHover(name, f.properties.iso_a3);
+                                    showIntel(name, false); 
+                                }
                             },
                             mouseout: () => {
-                                layer.setStyle({ fillOpacity: 0 });
                                 if(!isLocked) {
                                     document.getElementById('hover-card').style.display='none';
                                     document.getElementById('intel-panel').style.display='none';
@@ -114,7 +136,7 @@
                                 L.DomEvent.stopPropagation(e);
                                 isLocked = true;
                                 const target = customCenters[name] || layer.getBounds().getCenter();
-                                map.flyTo(target, 4);
+                                map.flyTo(target, 4.5);
                                 updateHover(name, f.properties.iso_a3);
                                 showIntel(name, true);
                             }
@@ -122,24 +144,21 @@
                     }
                 }).addTo(map);
                 loadData();
-            }).catch(() => lb.innerText = "Status: Geo-Data Load Failed.");
+            });
     }
 
-    function getMatches(mapName) {
-        const m = mapName.toLowerCase();
+    function getMatches(name) {
+        const m = name.toLowerCase();
         return predictions.filter(p => {
             const c = (p["Country/Region"] || "").toLowerCase();
             if ((m.includes("united states") || m === "usa") && (c.includes("united states") || c === "usa")) return true;
             if (m === "brazil" && (c.includes("south america") || c === "brazil")) return true;
-            if (m.includes("saudi arabia") && c.includes("middle east")) return true;
             return c.includes(m) || m.includes(c);
         });
     }
 
     function loadData() {
         const ts = Date.now();
-        lb.innerText = "Status: Fetching Predictions...";
-        
         fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
             const lines = txt.split('\n');
             const h = lines[0].split(',').map(x => x.trim());
@@ -150,10 +169,9 @@
                 return o;
             });
             drawBadges();
-            lb.innerText = "Status: Atlas Ready (v2.4.4)";
+            lb.innerText = "Status: Operational (v2.4.5)";
         });
 
-        // Load Background Data
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
             txt.split('\n').slice(1).forEach(row => {
                 const p = row.split(',');
@@ -175,7 +193,6 @@
                 }).addTo(map).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     isLocked = true;
-                    map.flyTo(center, 4);
                     showIntel(n, true);
                 });
             }
@@ -195,7 +212,7 @@
     function showIntel(name, lock = false) {
         const matches = getMatches(name);
         if (matches.length === 0) return;
-        document.getElementById('intel-title').innerText = `${name} Feed (${matches.length})`;
+        document.getElementById('intel-title').innerText = `${name} (${matches.length})`;
         document.getElementById('intel-body').innerHTML = matches.map(p => `
             <div class="pred-box">
                 <div style="font-size:10px; color:#94a3b8; margin-bottom:5px; font-weight:bold;">${p["Date of Premonition"]}</div>
