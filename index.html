@@ -3,69 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.3.4-Final</title>
+    <title>Global Atlas | v2.3.4-Fixed</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: -apple-system, sans-serif; }
+        
+        /* Map Layer */
         #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; background: #020617; }
-        .map-dimmed { opacity: 0.35; filter: grayscale(0.5) contrast(1.1); }
-        
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; border-bottom: 1px solid #334155; z-index: 10010; display: flex; align-items: center; }
-        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; }
-        #ticker-container { flex-grow: 1; overflow: hidden; position: relative; height: 100%; }
-        #ticker-content { white-space: nowrap; position: absolute; left: 0; color: #94a3b8; font-size: 11px; line-height: 32px; }
-        .ticker-item { display: inline-block; margin-right: 60px; cursor: pointer; }
+        .map-dimmed { opacity: 0.3; filter: grayscale(0.7) blur(1px); pointer-events: none; }
 
-        /* PANELS */
-        #hover-card { position: fixed; top: 85px; right: 15px; z-index: 10005; background: white; padding: 18px; border-radius: 12px; display: none; width: 285px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
-        #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10006; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; flex-direction: column; box-shadow: 0 25px 60px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
+        /* Left Intel Panel - BOOSTED Z-INDEX */
+        #intel-panel { 
+            position: fixed; 
+            top: 85px; 
+            left: 20px; 
+            width: 350px; 
+            max-height: 75vh; 
+            background: #0f172a; 
+            border: 1px solid #334155; 
+            border-radius: 12px; 
+            color: white; 
+            display: none; /* Controlled by JS */
+            flex-direction: column; 
+            z-index: 99999 !important; /* Above everything */
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
         
-        .close-btn { background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
-        .intel-badge { border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #facc15; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        
-        .stat-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; border-top: 1px solid #f8fafc; padding-top: 5px; }
-        .stat-val { color: #0f172a; font-weight: 700; }
-        #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; border: 1px solid #334155; }
+        /* Right Hover Card */
+        #hover-card { 
+            position: fixed; 
+            top: 85px; 
+            right: 20px; 
+            width: 280px; 
+            background: white; 
+            border-radius: 12px; 
+            padding: 15px; 
+            display: none; 
+            z-index: 99998; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 100000; display: flex; align-items: center; border-bottom: 1px solid #1e293b; }
+        .intel-badge { background: #facc15; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 5px 0; font-size: 11px; }
+        .stat-val { font-weight: 700; color: #0f172a; }
+        #log { position: fixed; bottom: 20px; left: 20px; z-index: 100000; background: #000; color: #4ade80; padding: 5px 12px; font-size: 10px; border-radius: 4px; border: 1px solid #334155; }
     </style>
 </head>
 <body>
 
-<div id="ticker-wrap"><div id="ticker-label">Live Feed</div><div id="ticker-container"><div id="ticker-content"></div></div></div>
-<div id="log">Status: Connecting...</div>
+<div id="ticker-wrap">
+    <div style="background:#ef4444; color:white; padding:0 15px; height:100%; display:flex; align-items:center; font-size:10px; font-weight:900;">LIVE FEED</div>
+    <div id="ticker-container" style="flex-grow:1; overflow:hidden; position:relative; height:100%;"><div id="ticker-content" style="white-space:nowrap; position:absolute; left:0; color:#94a3b8; font-size:11px; line-height:32px;"></div></div>
+</div>
+
+<div id="log">Status: Initializing...</div>
 <div id="map"></div>
 
 <div id="hover-card">
-    <button class="close-btn" style="position:absolute; top:10px; right:10px;" onclick="closeIntel()">✕</button>
+    <button onclick="closeIntel()" style="position:absolute; top:10px; right:10px; cursor:pointer; border:none; background:#f1f5f9; border-radius:50%; width:20px; height:20px;">✕</button>
     <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
-        <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
-        <a href="" id="card-name-link" target="_blank" style="font-size:18px; color:#2563eb; font-weight:800; text-decoration:none;"></a>
+        <img src="" id="card-flag" style="width:30px; border:1px solid #eee;">
+        <a href="" id="card-name-link" target="_blank" style="font-weight:800; color:#2563eb; text-decoration:none;"></a>
     </div>
-    <div class="stat-row"><span class="stat-label">Capital</span><span class="stat-val" id="card-cap">...</span></div>
-    <div class="stat-row"><span class="stat-label">Leader</span><span class="stat-val" id="card-leader">...</span></div>
-    <div class="stat-row"><span class="stat-label">Population</span><span class="stat-val" id="card-pop">...</span></div>
-    <div style="margin-top:10px; border-top:2px solid #f1f5f9; padding-top:8px;">
-        <div style="font-size:9px; color:#94a3b8; font-weight:900; text-transform:uppercase;">Economy (World Bank)</div>
-        <div class="stat-row"><span class="stat-label">GDP (Total)</span><span class="stat-val" id="card-gdp">--</span></div>
-        <div class="stat-row"><span class="stat-label">GDP Per Capita</span><span class="stat-val" id="card-gdppc">--</span></div>
-        <div class="stat-row"><span class="stat-label">Inflation</span><span class="stat-val" id="card-inf">--</span></div>
-    </div>
+    <div class="stat-row"><span>Capital</span><span class="stat-val" id="card-cap"></span></div>
+    <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader"></span></div>
+    <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop"></span></div>
+    <div style="margin-top:10px; padding-top:5px; border-top:2px solid #f1f5f9; font-size:9px; color:#94a3b8; font-weight:800;">ECONOMY</div>
+    <div class="stat-row"><span>GDP</span><span class="stat-val" id="card-gdp"></span></div>
+    <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf"></span></div>
 </div>
 
 <div id="intel-panel">
-    <div style="padding:15px; background:#1e293b; border-bottom:1px solid #475569; display:flex; justify-content:space-between; align-items:center;">
-        <span id="intel-title" style="color:#facc15; font-weight:800; font-size:11px; text-transform:uppercase;">Activity Feed</span>
-        <button class="close-btn" style="background:rgba(255,255,255,0.1); color:white;" onclick="closeIntel()">✕</button>
+    <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
+        <b id="intel-title" style="color:#facc15; font-size:12px; text-transform:uppercase;">ACTIVITY FEED</b>
+        <button onclick="closeIntel()" style="background:none; border:none; color:white; cursor:pointer; font-size:16px;">✕</button>
     </div>
-    <div id="intel-body" style="overflow-y:auto; flex-grow:1;"></div>
+    <div id="intel-body" style="overflow-y:auto; padding:5px;"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
     const lb = document.getElementById('log');
-    let map, geoLayer, isLocked = false, currentCountry = "";
+    let map, geoLayer, isLocked = false;
     let predictions = [], worldData = {}, leaderData = {};
     let tickerPos = 0;
 
@@ -73,44 +97,43 @@
 
     function initMap() {
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-        
-        // BASE MAP
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-        
-        // RESTORED LABELS (Country names, seas, cities)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            opacity: 0.8,
-            zIndex: 500
-        }).addTo(map);
-        
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.7 }).addTo(map);
         fetchData();
     }
 
     async function fetchData() {
-        const ts = Date.now();
         try {
-            // Load GeoJSON
-            const geoRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
-            const geoData = await geoRes.json();
-            geoLayer = L.geoJSON(geoData, {
-                style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.1)" },
-                onEachFeature: (f, layer) => {
-                    layer.on({
-                        mouseover: () => { if(!isLocked) { updateHover(f.properties.name, f.properties.iso_a3); showIntel(f.properties.name, false); }},
-                        mouseout: () => { if(!isLocked) hideUI(); },
-                        click: (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name, f.properties.iso_a3); }
-                    });
-                }
-            }).addTo(map);
+            const ts = Date.now();
+            // Geography
+            fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`).then(r => r.json()).then(data => {
+                geoLayer = L.geoJSON(data, {
+                    style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.1)" },
+                    onEachFeature: (f, layer) => {
+                        layer.on({
+                            mouseover: () => { if(!isLocked) { updateHover(f.properties.name, f.properties.iso_a3); showIntel(f.properties.name, false); }},
+                            mouseout: () => { if(!isLocked) hideUI(); },
+                            click: (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name, f.properties.iso_a3); }
+                        });
+                    }
+                }).addTo(map);
+            });
 
-            // Load CSVs
+            // Predictions CSV
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
             predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
                 const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return { "Country/Region": v[1]?.replace(/"/g, '').trim(), "Prediction Description": v[2]?.replace(/"/g, '').trim(), "Date of Premonition": v[0] };
+                return { "Country/Region": v[1]?.replace(/"/g, '').trim(), "Prediction": v[2]?.replace(/"/g, '').trim(), "Date": v[0] };
             });
 
+            // RestCountries
+            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,capital,maps`).then(r => r.json()).then(data => {
+                data.forEach(c => worldData[c.cca3] = c);
+                drawHeatBadges();
+            });
+
+            // Leaders CSV
             fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
                 t.split('\n').slice(1).forEach(row => {
                     const p = row.split(',');
@@ -118,15 +141,9 @@
                 });
             });
 
-            // Load World Meta
-            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,capital,maps`).then(r => r.json()).then(data => {
-                data.forEach(c => worldData[c.cca3] = c);
-                drawHeatBadges();
-            });
-
             runTicker();
             lb.innerText = "Status: Operational (v2.3.4)";
-        } catch (e) { lb.innerText = "Status: Data Link Warning"; }
+        } catch (e) { lb.innerText = "Status: Data Error"; }
     }
 
     function drawHeatBadges() {
@@ -135,8 +152,7 @@
             const n = layer.feature.properties.name;
             const m = predictions.filter(p => p["Country/Region"]?.toLowerCase() === n.toLowerCase());
             if (m.length > 0) {
-                const pos = manualCoords[n] || layer.getBounds().getCenter();
-                L.marker(pos, { 
+                L.marker(manualCoords[n] || layer.getBounds().getCenter(), { 
                     icon: L.divIcon({ className: '', html: `<div class="intel-badge">${m.length}</div>`, iconSize: [22, 22] }),
                     zIndexOffset: 1000
                 }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); jumpTo(n, layer.feature.properties.iso_a3); });
@@ -146,16 +162,14 @@
 
     async function fetchEconomy(iso) {
         if (!iso) return;
-        const indicators = { gdp: "NY.GDP.MKTP.CD", gdppc: "NY.GDP.PCAP.CD", inf: "FP.CPI.TOTL.ZG" };
+        const indicators = { gdp: "NY.GDP.MKTP.CD", inf: "FP.CPI.TOTL.ZG" };
         for (const [key, id] of Object.entries(indicators)) {
             try {
                 const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/${id}?format=json&per_page=1&date=2021:2024`);
                 const data = await res.json();
                 if (data[1] && data[1][0]) {
                     let val = data[1][0].value;
-                    let display = (key === 'gdp') ? "$" + (val >= 1e12 ? (val/1e12).toFixed(2) + "T" : (val/1e9).toFixed(1) + "B") :
-                                  (key === 'gdppc') ? "$" + Math.round(val).toLocaleString() : val.toFixed(1) + "%";
-                    document.getElementById(`card-${key}`).innerText = display;
+                    document.getElementById(`card-${key}`).innerText = (key === 'gdp') ? "$" + (val >= 1e12 ? (val/1e12).toFixed(1) + "T" : (val/1e9).toFixed(1) + "B") : val.toFixed(1) + "%";
                 } else { document.getElementById(`card-${key}`).innerText = "N/A"; }
             } catch (e) { document.getElementById(`card-${key}`).innerText = "ERR"; }
         }
@@ -163,21 +177,18 @@
 
     function updateHover(name, code) {
         const d = worldData[code];
-        const link = document.getElementById('card-name-link');
-        link.innerText = d ? d.name.common : name;
-        link.href = d?.maps?.googleMaps || "#";
+        document.getElementById('card-name-link').innerText = d ? d.name.common : name;
+        document.getElementById('card-name-link').href = d?.maps?.googleMaps || "#";
         document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "N/A";
         document.getElementById('card-leader').innerText = leaderData[code]?.name || "N/A";
         document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
-        ["gdp", "gdppc", "inf"].forEach(id => document.getElementById(`card-${id}`).innerText = "...");
         document.getElementById('card-flag').src = d?.flags?.png || "";
         document.getElementById('hover-card').style.display = 'block';
-        if(code) fetchEconomy(code);
+        fetchEconomy(code);
     }
 
     function jumpTo(name, iso) {
         isLocked = true;
-        currentCountry = name;
         document.getElementById('map').classList.add('map-dimmed');
         let center = manualCoords[name] || [20,0];
         geoLayer.eachLayer(l => { if(l.feature.properties.name.toLowerCase() === name.toLowerCase()) center = manualCoords[name] || l.getBounds().getCenter(); });
@@ -190,36 +201,38 @@
         const m = predictions.filter(p => p["Country/Region"]?.toLowerCase() === name.toLowerCase());
         if (m.length === 0) return;
         const panel = document.getElementById('intel-panel');
-        panel.style.display = 'flex';
+        panel.style.display = 'flex'; // FORCE FLEX DISPLAY
         document.getElementById('intel-title').innerText = name;
         document.getElementById('intel-body').innerHTML = m.map(p => `
-            <div style="padding:15px; border-bottom:1px solid rgba(255,255,255,0.08);">
-                <div style="font-size:10px; color:#facc15; font-weight:800; margin-bottom:4px;">${p["Date of Premonition"]}</div>
-                <div style="font-size:13px; line-height:1.5; color:#f1f5f9;">${p["Prediction Description"]}</div>
+            <div style="padding:12px; border-bottom:1px solid #1e293b;">
+                <div style="font-size:10px; color:#facc15; font-weight:800;">${p.Date}</div>
+                <div style="font-size:13px; color:#cbd5e1; margin-top:4px;">${p.Prediction}</div>
             </div>`).join('');
         if(lock) isLocked = true;
     }
 
-    function closeIntel() { isLocked = false; currentCountry = ""; hideUI(); }
-    function hideUI() { 
+    function closeIntel() { 
+        isLocked = false; 
         document.getElementById('hover-card').style.display='none'; 
         document.getElementById('intel-panel').style.display='none'; 
         document.getElementById('map').classList.remove('map-dimmed'); 
     }
 
-    function runTicker() {
-        const content = document.getElementById('ticker-content');
-        const recent = predictions.slice(-10).reverse();
-        content.innerHTML = recent.map(p => `<span class="ticker-item" onclick="jumpTo('${p["Country/Region"]}', '')"><b>[${p["Date of Premonition"]}]</b> ${p["Country/Region"]}</span>`).join('') + " &nbsp; ";
-        animate();
+    function hideUI() { 
+        if(!isLocked) {
+            document.getElementById('hover-card').style.display='none'; 
+            document.getElementById('intel-panel').style.display='none'; 
+        }
     }
 
-    function animate() {
-        tickerPos -= 0.8;
+    function runTicker() {
         const content = document.getElementById('ticker-content');
-        if (content && Math.abs(tickerPos) >= content.scrollWidth / 2) tickerPos = 0;
-        if (content) content.style.transform = `translate3d(${tickerPos}px, 0, 0)`;
-        requestAnimationFrame(animate);
+        content.innerHTML = predictions.slice(-10).reverse().map(p => `<span class="ticker-item" onclick="jumpTo('${p["Country/Region"]}', '')"><b>[${p.Date}]</b> ${p["Country/Region"]}</span>`).join('');
+        setInterval(() => {
+            tickerPos -= 1;
+            if (Math.abs(tickerPos) >= content.scrollWidth) tickerPos = 500;
+            content.style.transform = `translateX(${tickerPos}px)`;
+        }, 30);
     }
 
     initMap();
