@@ -3,44 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.7.0</title>
+    <title>Global Atlas | v2.7.1</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: -apple-system, sans-serif; }
-        #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #020617; transition: opacity 0.4s ease; top: 32px; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+        #map { height: calc(100vh - 32px); width: 100vw; position: absolute; z-index: 1; background: #020617; transition: opacity 0.4s ease; top: 32px; }
         
         .map-dimmed { opacity: 0.35; filter: grayscale(0.4) contrast(1.1); }
         
-        /* THE LIVE TICKER */
+        /* TICKER SYSTEM - Safari Optimized */
         #ticker-wrap { 
             position: fixed; top: 0; left: 0; width: 100%; height: 32px; 
             background: #0f172a; border-bottom: 1px solid #334155; 
             z-index: 10010; overflow: hidden; display: flex; align-items: center;
         }
         #ticker-label { 
-            background: #ef4444; color: white; padding: 0 12px; height: 100%; 
+            background: #ef4444; color: white; padding: 0 15px; height: 100%; 
             display: flex; align-items: center; font-size: 10px; font-weight: 900; 
-            text-transform: uppercase; letter-spacing: 1px; z-index: 10011; box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            text-transform: uppercase; letter-spacing: 1.5px; z-index: 10011; 
+            box-shadow: 10px 0 20px rgba(0,0,0,0.5);
         }
-        #ticker-content { white-space: nowrap; display: inline-block; animation: ticker-scroll 60s linear infinite; padding-left: 20px; }
+        #ticker-container { 
+            flex-grow: 1; overflow: hidden; position: relative; height: 100%; 
+            display: flex; align-items: center; 
+        }
+        #ticker-content { 
+            white-space: nowrap; position: absolute; left: 0; 
+            will-change: transform; transform: translate3d(0,0,0); /* Safari Smoothness */
+        }
         .ticker-item { 
-            display: inline-block; color: #94a3b8; font-size: 11px; margin-right: 40px; 
-            cursor: pointer; transition: color 0.2s; 
+            display: inline-block; color: #94a3b8; font-size: 11px; margin-right: 60px; 
+            cursor: pointer; transition: color 0.2s; padding: 5px 0;
         }
         .ticker-item:hover { color: #facc15; }
-        .ticker-item b { color: #f1f5f9; margin-right: 5px; }
-
-        @keyframes ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+        .ticker-item b { color: #f1f5f9; margin-right: 8px; }
 
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
         
-        /* UI PANELS */
+        /* PANELS */
         #hover-card { position: fixed; top: 85px; right: 15px; z-index: 9999; background: white; padding: 15px; border-radius: 12px; display: none; width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
         #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10005; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.7); backdrop-filter: blur(12px); flex-direction: column; }
-        
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
         .intel-filter-container { padding: 10px 15px; background: #0f172a; border-bottom: 1px solid #334155; }
         #intel-search { width: 100%; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 8px 12px; color: white; font-size: 12px; outline: none; box-sizing: border-box; }
@@ -66,11 +71,13 @@
 <body>
 
 <div id="ticker-wrap">
-    <div id="ticker-label">Live Intel Feed</div>
-    <div id="ticker-content"></div>
+    <div id="ticker-label">Live Feed</div>
+    <div id="ticker-container">
+        <div id="ticker-content" onmouseover="pauseTicker()" onmouseout="resumeTicker()"></div>
+    </div>
 </div>
 
-<div id="log">Status: Connecting to Satellite...</div>
+<div id="log">Status: Handshaking with Satellites...</div>
 <div id="map"></div>
 
 <div id="hover-card">
@@ -101,7 +108,7 @@
     const lb = document.getElementById('log');
     let map, geoLayer, isLocked = false, currentCountry = "";
     let predictions = [], worldData = {}, leaderData = {};
-    let geoDataReady = false;
+    let tickerPos = 0, isPaused = false, tickerSpeed = 0.8; // Lower = Slower
 
     const customCenters = {
         "France": [46.2276, 2.2137],
@@ -118,169 +125,4 @@
 
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([savedLat, savedLng], savedZoom);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
-
-        L.Control.geocoder({ defaultMarkGeocode: false, placeholder: "Search Region..." })
-        .on('markgeocode', (e) => { map.flyTo(e.geocode.center, 5); })
-        .addTo(map);
-
-        map.on('moveend', () => {
-            localStorage.setItem('map_lat', map.getCenter().lat);
-            localStorage.setItem('map_lng', map.getCenter().lng);
-            localStorage.setItem('map_zoom', map.getZoom());
-        });
-
-        loadGeography();
-    }
-
-    function loadGeography() {
-        fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
-            .then(r => r.json())
-            .then(geo => {
-                geoLayer = L.geoJSON(geo, {
-                    style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.12)" },
-                    onEachFeature: (f, layer) => {
-                        const name = f.properties.name;
-                        layer.on({
-                            mouseover: () => { if(!isLocked) { updateHover(name, f.properties.iso_a3); showIntel(name, false); }},
-                            mouseout: () => { if(!isLocked) { hideUI(); }},
-                            click: (e) => {
-                                L.DomEvent.stopPropagation(e);
-                                jumpToCountry(name, layer.feature.properties.iso_a3);
-                            }
-                        });
-                    }
-                }).addTo(map);
-                geoDataReady = true;
-                loadData();
-            });
-    }
-
-    function jumpToCountry(name, iso) {
-        isLocked = true;
-        currentCountry = name;
-        document.getElementById('map').classList.add('map-dimmed');
-        const target = customCenters[name] || getLayerCenter(name);
-        map.flyTo(target, 4.5);
-        updateHover(name, iso);
-        showIntel(name, true);
-    }
-
-    function getLayerCenter(name) {
-        let center = [0,0];
-        geoLayer.eachLayer(l => { if(l.feature.properties.name === name) center = l.getBounds().getCenter(); });
-        return center;
-    }
-
-    function loadData() {
-        const ts = Date.now();
-        fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
-            const lines = txt.split('\n');
-            const h = lines[0].split(',').map(x => x.trim());
-            predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
-                const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const o = {};
-                h.forEach((key, i) => o[key] = v[i]?.replace(/"/g, '').trim() || "");
-                return o;
-            });
-            if (geoDataReady) drawBadges();
-            updateTicker();
-            lb.innerText = "Status: Monitoring Global Activity.";
-        });
-
-        fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
-            txt.split('\n').slice(1).forEach(row => {
-                const p = row.split(',');
-                if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
-            });
-        });
-        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,translations`).then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c));
-    }
-
-    function updateTicker() {
-        const ticker = document.getElementById('ticker-content');
-        const recent = predictions.slice(-10).reverse(); // Last 10
-        ticker.innerHTML = recent.map(p => {
-            const country = p["Country/Region"];
-            return `<span class="ticker-item" onclick="tickerJump('${country}')"><b>[${p["Date of Premonition"]}]</b> ${country}: ${p["Prediction Description"].substring(0, 60)}...</span>`;
-        }).join('');
-        // Double it for seamless loop
-        ticker.innerHTML += ticker.innerHTML;
-    }
-
-    function tickerJump(countryName) {
-        // Find ISO code for hover card
-        let iso = "";
-        for(let code in worldData) { if(worldData[code].name.common.toLowerCase().includes(countryName.toLowerCase())) iso = code; }
-        jumpToCountry(countryName, iso);
-    }
-
-    function drawBadges() {
-        geoLayer.eachLayer(layer => {
-            const n = layer.feature.properties.name;
-            const matches = getMatches(n);
-            if (matches.length > 0) {
-                const center = customCenters[n] || layer.getBounds().getCenter();
-                let heatClass = (matches.length >= 10) ? "pulse-red" : (matches.length >= 4 ? "heat-orange" : "heat-yellow");
-                L.marker(center, { icon: L.divIcon({ className: '', html: `<div class="intel-badge ${heatClass}">${matches.length}</div>`, iconSize: [22, 22] }) })
-                .addTo(map).on('click', (e) => {
-                    L.DomEvent.stopPropagation(e);
-                    jumpToCountry(n, layer.feature.properties.iso_a3);
-                });
-            }
-        });
-    }
-
-    function getMatches(name) {
-        const m = (name || "").toLowerCase();
-        return predictions.filter(p => {
-            const c = (p["Country/Region"] || "").toLowerCase();
-            return c.includes(m) || m.includes(c);
-        });
-    }
-
-    function updateHover(name, code) {
-        const d = worldData[code];
-        document.getElementById('card-name').innerText = d ? d.name.common : name;
-        document.getElementById('card-leader').innerText = leaderData[code]?.name || "N/A";
-        document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
-        const fl = document.getElementById('card-flag');
-        fl.src = d?.flags?.png || ""; fl.style.display = d?.flags ? 'block' : 'none';
-        document.getElementById('hover-card').style.display = 'block';
-    }
-
-    function showIntel(name, lock = false) {
-        currentCountry = name;
-        document.getElementById('intel-search').value = ""; 
-        const matches = getMatches(name);
-        document.getElementById('intel-title').innerText = `${name} Feed (${matches.length})`;
-        renderIntelList(matches);
-        document.getElementById('intel-panel').style.display = 'flex';
-        if (lock) isLocked = true;
-    }
-
-    function renderIntelList(list) {
-        document.getElementById('intel-body').innerHTML = list.map(p => `
-            <div class="pred-box">
-                <div class="pred-date">${p["Date of Premonition"]}</div>
-                <div class="pred-text">${p["Prediction Description"]}</div>
-            </div>
-        `).join('');
-    }
-
-    function filterIntel() {
-        const query = document.getElementById('intel-search').value.toLowerCase();
-        const matches = getMatches(currentCountry);
-        renderIntelList(matches.filter(p => p["Prediction Description"].toLowerCase().includes(query)));
-    }
-
-    function hideUI() {
-        document.getElementById('hover-card').style.display='none';
-        document.getElementById('intel-panel').style.display='none';
-        document.getElementById('map').classList.remove('map-dimmed');
-    }
-
-    function closeIntel() { isLocked = false; hideUI(); }
-</script>
-</body>
-</html>
+        L.tileLayer('
