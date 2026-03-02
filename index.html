@@ -3,80 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.7.4</title>
+    <title>Global Atlas | v2.7.5</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: -apple-system, sans-serif; }
-        #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; background: #020617; }
+        #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; background: #020617; transition: opacity 0.4s; }
+        .map-dimmed { opacity: 0.35; filter: grayscale(0.4) contrast(1.1); }
+        
+        /* TICKER */
         #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; border-bottom: 1px solid #334155; z-index: 10010; overflow: hidden; display: flex; align-items: center; }
-        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; z-index: 10011; }
+        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; z-index: 10011; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
         #ticker-container { flex-grow: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
         #ticker-content { white-space: nowrap; position: absolute; left: 0; will-change: transform; transform: translate3d(0,0,0); color: #94a3b8; font-size: 11px; }
         .ticker-item { display: inline-block; margin-right: 60px; cursor: pointer; }
-        #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; }
-        #hover-card { position: fixed; top: 85px; right: 15px; z-index: 9999; background: white; padding: 15px; border-radius: 12px; display: none; width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10005; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; flex-direction: column; }
+        .ticker-item:hover { color: #facc15; }
+
+        #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
+        
+        /* UI PANELS */
+        #hover-card { position: fixed; top: 85px; right: 15px; z-index: 9999; background: white; padding: 15px; border-radius: 12px; display: none; width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
+        #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10005; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; flex-direction: column; box-shadow: 0 25px 60px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
+        
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
+        #intel-search { width: calc(100% - 30px); margin: 10px 15px; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 8px; color: white; font-size: 12px; }
+        #intel-body { overflow-y: auto; flex-grow: 1; }
+        
+        .close-btn { background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; color: #64748b; font-weight: bold; }
         .intel-badge { border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .pulse-red { animation: badge-pulse 1.8s infinite; background: #ef4444 !important; color: white !important; }
         @keyframes badge-pulse { 0% { box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.7); } 100% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } }
-        .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .pred-text { font-size: 14px; line-height: 1.6; color: #f1f5f9; }
+        
+        .pred-box { padding: 15px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .pred-date { font-size: 10px; color: #94a3b8; font-weight: 800; margin-bottom: 4px; }
+        .pred-text { font-size: 13px; line-height: 1.5; color: #f1f5f9; }
     </style>
 </head>
 <body>
 
 <div id="ticker-wrap">
     <div id="ticker-label">Live Feed</div>
-    <div id="ticker-container"><div id="ticker-content"></div></div>
+    <div id="ticker-container"><div id="ticker-content" onmouseover="isPaused=true" onmouseout="isPaused=false"></div></div>
 </div>
 
-<div id="log">Status: Waiting for Leaflet...</div>
+<div id="log">Status: Connecting...</div>
 <div id="map"></div>
 
-<div id="hover-card"></div>
-<div id="intel-panel"></div>
+<div id="hover-card">
+    <button class="close-btn" style="position:absolute; top:10px; right:10px;" onclick="closeIntel()">✕</button>
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+        <img src="" id="card-flag" style="width:30px; border:1px solid #eee; display:none;">
+        <b id="card-name" style="font-size:15px; color:#1a202c;"></b>
+    </div>
+    <div style="font-size:12px; color:#64748b;">Leader: <span id="card-leader" style="color:#3182ce; font-weight:700;"></span></div>
+</div>
+
+<div id="intel-panel">
+    <div class="intel-header">
+        <span id="intel-title" style="color:#facc15; font-weight:800; font-size:11px;">ACTIVITY FEED</span>
+        <button onclick="closeIntel()" style="background:none; border:none; color:white; cursor:pointer;">✕</button>
+    </div>
+    <input type="text" id="intel-search" placeholder="Search intel..." oninput="filterIntel()">
+    <div id="intel-body"></div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
 <script>
     const lb = document.getElementById('log');
-    let map, geoLayer, isLocked = false;
-    let predictions = [], worldData = {}, tickerPos = 0, isPaused = false;
+    let map, geoLayer, isLocked = false, currentCountry = "";
+    let predictions = [], worldData = {}, leaderData = {};
+    let tickerPos = 0, isPaused = false, tickerSpeed = 0.8;
 
-    // Library Watcher: Prevents crash if scripts load slowly
     function checkLibrary() {
-        if (window.L && window.L.map) {
-            lb.innerText = "Status: Initializing Map...";
-            initMap();
-        } else {
-            setTimeout(checkLibrary, 100);
-        }
+        if (window.L && window.L.map) init();
+        else setTimeout(checkLibrary, 100);
     }
-
     window.onload = checkLibrary;
 
-    function initMap() {
-        try {
-            const lat = localStorage.getItem('map_lat') || 20;
-            const lng = localStorage.getItem('map_lng') || 0;
-            const zoom = localStorage.getItem('map_zoom') || 2.2;
+    function init() {
+        const lat = localStorage.getItem('map_lat') || 20, lng = localStorage.getItem('map_lng') || 0, zoom = localStorage.getItem('map_zoom') || 2.2;
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([lat, lng], zoom);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
 
-            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([lat, lng], zoom);
-            
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
+        map.on('moveend', () => {
+            localStorage.setItem('map_lat', map.getCenter().lat);
+            localStorage.setItem('map_lng', map.getCenter().lng);
+            localStorage.setItem('map_zoom', map.getZoom());
+        });
 
-            lb.innerText = "Status: Loading Geodata...";
-            loadGeography();
-        } catch(e) { 
-            lb.innerText = "Status: CRITICAL_MAP_FAIL"; 
-            console.error(e);
-        }
+        loadGeography();
     }
 
     function loadGeography() {
@@ -85,16 +105,21 @@
             .then(geo => {
                 geoLayer = L.geoJSON(geo, {
                     style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.12)" },
-                    onEachFeature: (f, l) => {
-                        l.on('click', (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name); });
+                    onEachFeature: (f, layer) => {
+                        layer.on({
+                            mouseover: () => { if(!isLocked) { updateHover(f.properties.name, f.properties.iso_a3); showIntel(f.properties.name, false); }},
+                            mouseout: () => { if(!isLocked) hideUI(); },
+                            click: (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name, f.properties.iso_a3); }
+                        });
                     }
                 }).addTo(map);
                 loadData();
-            }).catch(() => lb.innerText = "Status: GEO_FAIL");
+            });
     }
 
     function loadData() {
-        fetch(`predictions.csv?v=${Date.now()}`).then(r => r.text()).then(txt => {
+        const ts = Date.now();
+        fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
             const lines = txt.split('\n');
             const h = lines[0].split(',').map(x => x.trim());
             predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
@@ -104,43 +129,27 @@
             });
             drawBadges();
             initTicker();
-            lb.innerText = "Status: Operational (v2.7.4)";
+            lb.innerText = "Status: Operational (v2.7.5)";
         });
+
+        fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            txt.split('\n').slice(1).forEach(row => {
+                const p = row.split(',');
+                if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+            });
+        });
+        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags`).then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c));
     }
 
     function initTicker() {
         const content = document.getElementById('ticker-content');
         const recent = predictions.slice(-10).reverse();
-        content.innerHTML = recent.map(p => `<span class="ticker-item"><b>[${p["Date of Premonition"]}]</b> ${p["Country/Region"]}: ${p["Prediction Description"]}</span>`).join('') + " &nbsp; ";
+        const html = recent.map(p => `<span class="ticker-item" onclick="jumpTo('${p["Country/Region"]}')"><b>[${p["Date of Premonition"]}]</b> ${p["Country/Region"]}: ${p["Prediction Description"].substring(0,60)}...</span>`).join('');
+        content.innerHTML = html + html;
         requestAnimationFrame(animateTicker);
     }
 
     function animateTicker() {
-        const content = document.getElementById('ticker-content');
         if (!isPaused) {
-            tickerPos -= 1;
-            if (Math.abs(tickerPos) >= content.scrollWidth / 2) tickerPos = 0;
-            content.style.transform = `translate3d(${tickerPos}px, 0, 0)`;
-        }
-        requestAnimationFrame(animateTicker);
-    }
-
-    function drawBadges() {
-        geoLayer.eachLayer(layer => {
-            const n = layer.feature.properties.name;
-            const count = predictions.filter(p => (p["Country/Region"] || "").toLowerCase() === n.toLowerCase()).length;
-            if (count > 0) {
-                L.marker(layer.getBounds().getCenter(), { 
-                    icon: L.divIcon({ className: '', html: `<div class="intel-badge pulse-red">${count}</div>`, iconSize: [22, 22] }) 
-                }).addTo(map);
-            }
-        });
-    }
-
-    function jumpTo(name) {
-        lb.innerText = "Status: Zooming to " + name;
-        // Basic flyTo logic for brevity in this debug build
-    }
-</script>
-</body>
-</html>
+            tickerPos -= tickerSpeed;
+            const content = document.getElementById('ticker-
