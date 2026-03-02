@@ -3,91 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.3.6</title>
+    <title>Global Atlas | v2.3.7</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
         
         #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; }
-        .map-dimmed { opacity: 0.2; filter: grayscale(1) blur(4px); pointer-events: none; }
+        .map-dimmed { opacity: 0.25; filter: grayscale(1) blur(2px); pointer-events: none; }
 
-        /* LEFT PANEL - RE-ENGINEERED FOR v2.3.6 */
+        /* THE ELUSIVE LEFT PANEL - v2.3.7 PORTAL MODE */
         #intel-panel { 
             position: fixed !important; 
-            top: 60px !important; 
+            top: 70px !important; 
             left: 20px !important; 
-            width: 360px !important; 
-            max-height: 80vh !important;
-            background: #0f172a !important; 
-            color: #fff !important; 
-            display: none; 
+            width: 380px !important; 
+            height: 500px !important; /* FIXED HEIGHT FOR TESTING */
+            background: #111827 !important; /* Solid Dark Blue/Black */
+            color: #ffffff !important; 
+            display: none; /* Controlled by JS .style.display = 'flex' */
             flex-direction: column; 
-            z-index: 99999 !important; 
-            border: 2px solid #334155;
+            z-index: 1000000 !important; /* Absolute top */
+            border: 2px solid #facc15 !important; /* Bright Yellow Border */
             border-radius: 12px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            overflow: hidden;
         }
 
-        /* RIGHT CARD - RESTORED v2.3.4 FEATURES */
         #hover-card { 
             position: fixed; 
-            top: 60px; 
+            top: 70px; 
             right: 20px; 
             width: 300px; 
             background: white; 
             border-radius: 12px; 
             padding: 20px; 
             display: none; 
-            z-index: 99998; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            border: 1px solid #e2e8f0;
+            z-index: 99999; 
+            border: 1px solid #ddd;
         }
 
-        .heat-badge { background: #facc15; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .heat-badge { background: #facc15; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .close-btn { background: #334155; border: none; color: white; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
-        .stat-row { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; border-top: 1px solid #f1f5f9; padding-top: 6px; color: #475569; }
-        .stat-val { font-weight: 700; color: #0f172a; }
-        
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 100000; display: flex; align-items: center; border-bottom: 1px solid #1e293b; }
-        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 100000; background: #ef4444; color: white; padding: 4px 10px; font-size: 10px; font-weight: bold; border-radius: 4px; }
-        
-        .close-btn { background: #f1f5f9; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; font-weight: bold; }
-        .close-btn:hover { background: #e2e8f0; }
+        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 10000; border-bottom: 1px solid #334155; }
+        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 10001; background: #ef4444; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; }
+        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 6px 0; font-size: 12px; }
     </style>
 </head>
 <body>
 
-<div id="ticker-wrap">
-    <div style="background:#ef4444; color:white; padding:0 15px; height:100%; display:flex; align-items:center; font-size:10px; font-weight:900;">LIVE UPDATES</div>
-    <div id="ticker-content" style="color:#94a3b8; font-size:11px; padding-left:20px;">SYSTEM CONNECTED...</div>
-</div>
-
-<div id="ver-tag">BUILD v2.3.6</div>
+<div id="ver-tag">BUILD v2.3.7</div>
+<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">v2.3.7 PORTAL ACTIVE</div></div>
 
 <div id="intel-panel">
-    <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
-        <span id="intel-title" style="color:#facc15; font-weight:800; text-transform:uppercase; font-size:12px;">Intel Feed</span>
-        <button class="close-btn" style="background:rgba(255,255,255,0.1); color:white;" onclick="closeIntel()">✕</button>
+    <div style="padding:15px; background:#1f2937; display:flex; justify-content:space-between; align-items:center;">
+        <b id="intel-title" style="color:#facc15; font-size:14px;">ACTIVITY FEED</b>
+        <button class="close-btn" onclick="closeIntel()">CLOSE ✕</button>
     </div>
-    <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:15px;"></div>
+    <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:15px; font-size:14px; background:#111827;">
+        </div>
 </div>
 
 <div id="hover-card">
-    <button class="close-btn" style="position:absolute; top:12px; right:12px;" onclick="closeIntel()">✕</button>
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:15px;">
-        <img src="" id="card-flag" style="width:40px; border-radius:3px; border:1px solid #eee; display:none;">
-        <div id="card-name" style="font-size:18px; font-weight:800; color:#2563eb;"></div>
+    <button style="float:right; border:none; background:none; cursor:pointer; font-size:18px;" onclick="closeIntel()">✕</button>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+        <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
+        <span id="card-name" style="font-size:20px; font-weight:800; color:#2563eb;"></span>
     </div>
-    <div class="stat-row"><span>Capital</span><span class="stat-val" id="card-cap">--</span></div>
-    <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader">--</span></div>
-    <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
-    <div style="margin-top:15px; padding-top:10px; border-top:2px solid #f1f5f9;">
-        <div style="font-size:10px; color:#94a3b8; font-weight:800; margin-bottom:5px;">ECONOMY</div>
-        <div class="stat-row"><span>GDP (Total)</span><span class="stat-val" id="card-gdp">--</span></div>
-        <div class="stat-row"><span>GDP Per Capita</span><span class="stat-val" id="card-gdppc">--</span></div>
-        <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
+    <div id="card-meta">
+        <div class="stat-row"><span>Capital</span><b id="card-cap"></b></div>
+        <div class="stat-row"><span>Leader</span><b id="card-leader"></b></div>
+        <div class="stat-row"><span>Population</span><b id="card-pop"></b></div>
     </div>
 </div>
 
@@ -102,13 +90,13 @@
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
-        loadCoreData();
+        loadData();
     }
 
-    async function loadCoreData() {
+    async function loadData() {
         const ts = Date.now();
         try {
-            // 1. Fetch Predictions
+            // Predictions
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
             predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
@@ -116,7 +104,7 @@
                 return { country: v[1]?.replace(/"/g, '').trim(), text: v[2]?.replace(/"/g, '').trim(), date: v[0] };
             });
 
-            // 2. Fetch Leaders
+            // Leaders
             fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
                 t.split('\n').slice(1).forEach(row => {
                     const p = row.split(',');
@@ -124,66 +112,67 @@
                 });
             });
 
-            // 3. Fetch Geography
+            // Geography
             const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
             const gData = await gRes.json();
             geoLayer = L.geoJSON(gData, {
                 style: { fillOpacity: 0, weight: 1.5, color: "rgba(255,255,255,0.2)" },
                 onEachFeature: (f, layer) => {
                     layer.on({
-                        mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color:'#facc15', fillOpacity:0.1}); updateUI(f.properties.name, f.properties.iso_a3); }},
-                        mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideUI(); }},
-                        click: (e) => { L.DomEvent.stopPropagation(e); lockView(f.properties.name, f.properties.iso_a3); }
+                        mouseover: (e) => { 
+                            if(!isLocked) {
+                                e.target.setStyle({weight:3, color:'#facc15', fillOpacity:0.1});
+                                updateInterface(f.properties.name, f.properties.iso_a3); 
+                            }
+                        },
+                        mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideInterface(); }},
+                        click: (e) => { L.DomEvent.stopPropagation(e); doLock(f.properties.name, f.properties.iso_a3); }
                     });
                 }
             }).addTo(map);
 
-            // 4. Fetch Meta & Draw Icons
+            // World Bank / RestCountries
             fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,capital`).then(r => r.json()).then(data => {
                 data.forEach(c => worldData[c.cca3] = c);
-                drawHeatIcons();
+                drawIcons();
             });
 
-        } catch (e) { console.log("Init Error:", e); }
+        } catch (e) { console.error("Load Error", e); }
     }
 
-    function drawHeatIcons() {
+    function drawIcons() {
         geoLayer.eachLayer(layer => {
             const name = layer.feature.properties.name;
-            const count = predictions.filter(p => p.country?.toLowerCase() === name.toLowerCase()).length;
-            if (count > 0) {
+            const matches = predictions.filter(p => p.country?.toLowerCase() === name.toLowerCase());
+            if (matches.length > 0) {
                 L.marker(layer.getBounds().getCenter(), { 
-                    icon: L.divIcon({ className: 'heat-badge', html: count, iconSize: [22, 22] }) 
-                }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); lockView(name, layer.feature.properties.iso_a3); });
+                    icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [22, 22] }) 
+                }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); doLock(name, layer.feature.properties.iso_a3); });
             }
         });
     }
 
-    function updateUI(name, iso) {
+    function updateInterface(name, iso) {
         const d = worldData[iso];
-        const matching = predictions.filter(p => p.country?.toLowerCase() === name.toLowerCase());
+        const matches = predictions.filter(p => p.country?.toLowerCase() === name.toLowerCase());
         
-        // Right Card Update
+        // Update Right Card
         document.getElementById('card-name').innerText = name;
         document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "--";
         document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
         document.getElementById('card-leader').innerText = leaderData[iso]?.name || "--";
-        
-        const flag = document.getElementById('card-flag');
-        if(d?.flags?.png) { flag.src = d.flags.png; flag.style.display = 'block'; } else { flag.style.display = 'none'; }
-        
+        document.getElementById('card-flag').src = d?.flags?.png || "";
         document.getElementById('hover-card').style.display = 'block';
-        fetchEco(iso);
 
-        // Left Panel Update
+        // Update Left Panel
         const panel = document.getElementById('intel-panel');
-        if (matching.length > 0) {
-            panel.style.display = 'flex';
-            document.getElementById('intel-title').innerText = name + " Intel";
-            document.getElementById('intel-body').innerHTML = matching.map(p => `
-                <div style="margin-bottom:15px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
-                    <div style="font-size:10px; color:#facc15; font-weight:bold;">${p.date}</div>
-                    <div style="margin-top:5px; font-size:14px; line-height:1.4; color:#cbd5e1;">${p.text}</div>
+        if (matches.length > 0) {
+            panel.style.display = 'flex'; // FORCE SHOW
+            document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
+            document.getElementById('intel-body').innerHTML = matches.map(p => `
+                <div style="margin-bottom:20px; border-bottom:1px solid #374151; padding-bottom:10px;">
+                    <div style="color:#facc15; font-size:11px; font-weight:bold;">${p.date}</div>
+                    <div style="margin-top:5px; color:#e5e7eb; line-height:1.5;">${p.text}</div>
                 </div>
             `).join('');
         } else {
@@ -191,36 +180,19 @@
         }
     }
 
-    async function fetchEco(iso) {
-        if(!iso) return;
-        const indicators = { gdp: "NY.GDP.MKTP.CD", gdppc: "NY.GDP.PCAP.CD", inf: "FP.CPI.TOTL.ZG" };
-        for (const [key, id] of Object.entries(indicators)) {
-            try {
-                const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/${id}?format=json&per_page=1&date=2021:2024`);
-                const data = await res.json();
-                if (data[1] && data[1][0]) {
-                    let val = data[1][0].value;
-                    let display = (key === 'gdp') ? "$" + (val >= 1e12 ? (val/1e12).toFixed(2) + "T" : (val/1e9).toFixed(1) + "B") :
-                                  (key === 'gdppc') ? "$" + Math.round(val).toLocaleString() : val.toFixed(1) + "%";
-                    document.getElementById(`card-${key}`).innerText = display;
-                }
-            } catch (e) { }
-        }
-    }
-
-    function lockView(name, iso) {
+    function doLock(name, iso) {
         isLocked = true;
         document.getElementById('map').classList.add('map-dimmed');
-        updateUI(name, iso);
+        updateInterface(name, iso);
     }
 
     function closeIntel() {
         isLocked = false;
         document.getElementById('map').classList.remove('map-dimmed');
-        hideUI();
+        hideInterface();
     }
 
-    function hideUI() {
+    function hideInterface() {
         document.getElementById('intel-panel').style.display = 'none';
         document.getElementById('hover-card').style.display = 'none';
     }
