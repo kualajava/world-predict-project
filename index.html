@@ -105,4 +105,143 @@
             map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([lat, lng], zoom);
             
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
+
+            map.on('moveend', () => {
+                try {
+                    localStorage.setItem('map_lat', map.getCenter().lat);
+                    localStorage.setItem('map_lng', map.getCenter().lng);
+                    localStorage.setItem('map_zoom', map.getZoom());
+                } catch(e) {}
+            });
+
+            loadDataStream();
+        } catch(e) {
+            lb.innerText = "Status: Leaflet Error.";
+        }
+    }
+
+    function loadDataStream() {
+        lb.innerText = "Status: Syncing Data...";
+        const ts = Date.now();
+        
+        fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
+            .then(r => r.json()).then(geo => {
+                geoLayer = L.geoJSON(geo, {
+                    style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.12)" },
+                    onEachFeature: (f, layer) => {
+                        layer.on({
+                            mouseover: () => { if(!isLocked) { updateHover(f.properties.name, f.properties.iso_a3); showIntel(f.properties.name, false); }},
+                            mouseout: () => { if(!isLocked) hideUI(); },
+                            click: (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name, f.properties.iso_a3); }
+                        });
+                    }
+                }).addTo(map);
+
+                fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
+                    const lines = txt.split('\n');
+                    const h = lines[0].split(',').map(x => x.trim());
+                    predictions = lines.slice(1).filter(l => l.trim() !== "").map(line => {
+                        const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                        const o = {}; h.forEach((key, i) => o[key] = v[i]?.replace(/"/g, '').trim() || "");
+                        return o;
+                    });
+                    drawHeatBadges();
+                    initTicker();
+                    lb.innerText = "Status: Atlas v2.3.5 Operational";
+                });
+            }).catch(e => { lb.innerText = "Status: Data Link Error."; });
+
+        fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
+            txt.split('\n').slice(1).forEach(row => {
+                const p = row.split(',');
+                if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+            });
+        });
+        fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags`).then(r => r.json()).then(data => data.forEach(c => worldData[c.cca3] = c));
+    }
+
+    function drawHeatBadges() {
+        if(!geoLayer) return;
+        geoLayer.eachLayer(layer => {
+            const n = layer.feature.properties.name;
+            const matches = predictions.filter(p => (p["Country/Region"] || "").toLowerCase() === n.toLowerCase());
+            if (matches.length > 0) {
+                let heatClass = matches.length >= 10 ? "heat-high" : (matches.length >= 5 ? "heat-med" : "heat-low");
+                L.marker(layer.getBounds().getCenter(), { 
+                    icon: L.divIcon({ className: '', html: `<div class="intel-badge ${heatClass}">${matches.length}</div>`, iconSize: [22, 22] }) 
+                }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); jumpTo(n, layer.feature.properties.iso_a3); });
+            }
+        });
+    }
+
+    function initTicker() {
+        const content = document.getElementById('ticker-content');
+        if(!content) return;
+        const recent = predictions.slice(-10).reverse();
+        const html = recent.map(p => `<span class="ticker-item" onclick="jumpTo('${p["Country/Region"]}')"><b>[${p["Date of Premonition"]}]</b> ${p["Country/Region"]}</span>`).join('');
+        content.innerHTML = html + html;
+        requestAnimationFrame(animate);
+    }
+
+    function animate() {
+        if (!isPaused) {
+            tickerPos -= tickerSpeed;
+            const content = document.getElementById('ticker-content');
+            if (content && Math.abs(tickerPos) >= content.scrollWidth / 2) tickerPos = 0;
+            if (content) content.style.transform = `translate3d(${tickerPos}px, 0, 0)`;
+        }
+        requestAnimationFrame(animate);
+    }
+
+    function jumpTo(name, iso) {
+        isLocked = true; currentCountry = name;
+        document.getElementById('map').classList.add('map-dimmed');
+        let center = [20,0];
+        geoLayer.eachLayer(l => { if(l.feature.properties.name === name) center = l.getBounds().getCenter(); });
+        map.flyTo(center, 4.5);
+        updateHover(name, iso);
+        showIntel(name, true);
+    }
+
+    function updateHover(name, code) {
+        const d = worldData[code];
+        document.getElementById('card-name').innerText = d ? d.name.common : name;
+        document.getElementById('card-leader').innerText = leaderData[code]?.name || "N/A";
+        const fl = document.getElementById('card-flag');
+        fl.src = d?.flags?.png || ""; fl.style.display = d?.flags ? 'block' : 'none';
+        document.getElementById('hover-card').style.display = 'block';
+    }
+
+    function showIntel(name, lock = false) {
+        const matches = predictions.filter(p => (p["Country/Region"] || "").toLowerCase() === name.toLowerCase());
+        if (matches.length === 0) return;
+        document.getElementById('intel-title').innerText = `${name} Feed`;
+        document.getElementById('intel-body').innerHTML = matches.map(p => `
+            <div class="pred-box">
+                <div class="pred-date">${p["Date of Premonition"]}</div>
+                <div class="pred-text">${p["Prediction Description"]}</div>
+            </div>
+        `).join('');
+        document.getElementById('intel-panel').style.display = 'flex';
+        if (lock) isLocked = true;
+    }
+
+    function filterIntel() {
+        const q = document.getElementById('intel-search').value.toLowerCase();
+        const boxes = document.querySelectorAll('.pred-box');
+        boxes.forEach(box => {
+            box.style.display = box.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+        });
+    }
+
+    function hideUI() {
+        document.getElementById('hover-card').style.display='none';
+        document.getElementById('intel-panel').style.display='none';
+        document.getElementById('map').classList.remove('map-dimmed');
+    }
+
+    function closeIntel() { isLocked = false; hideUI(); isPaused = false; }
+</script>
+</body>
+</html>
