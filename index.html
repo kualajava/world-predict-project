@@ -3,56 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.4.0</title>
-    
+    <title>Global Atlas | v2.4.1</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: sans-serif; }
         #map { position: absolute; top: 64px; bottom: 0; left: 0; right: 0; z-index: 1; }
         .map-dimmed { opacity: 0.15; filter: grayscale(1) blur(4px); pointer-events: none; }
-
-        /* THE PANEL - STYLED FROM YOUR SCREENSHOT */
-        #intel-panel { 
-            position: fixed !important; 
-            top: 80px !important; 
-            left: 20px !important; 
-            width: 400px !important; 
-            height: 80vh !important;
-            background: #0f172a !important; 
-            color: #fff !important; 
-            display: none; 
-            flex-direction: column; 
-            z-index: 2000; 
-            border: 2px solid #facc15;
-            border-radius: 12px;
-            box-shadow: 0 0 50px rgba(0,0,0,1);
-        }
-
-        #hover-card { position: fixed; top: 80px; right: 20px; width: 320px; background: white; border-radius: 12px; padding: 15px; display: none; z-index: 1999; border: 1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .heat-badge { background: #facc15 !important; border: 2px solid #000 !important; border-radius: 50% !important; color: #000 !important; font-weight: 900 !important; font-size: 13px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; box-shadow: 0 0 15px #facc15; }
-        
+        #intel-panel { position: fixed !important; top: 80px !important; left: 20px !important; width: 400px !important; height: 80vh !important; background: #0f172a !important; color: #fff !important; display: none; flex-direction: column; z-index: 2000; border: 2px solid #facc15; border-radius: 12px; box-shadow: 0 0 50px rgba(0,0,0,1); }
+        #hover-card { position: fixed; top: 80px; right: 20px; width: 320px; background: white; border-radius: 12px; padding: 15px; display: none; z-index: 1999; border: 1px solid #ddd; }
+        .heat-badge { background: #facc15 !important; border: 2px solid #000 !important; border-radius: 50% !important; color: #000 !important; font-weight: 900 !important; font-size: 13px !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 0 15px #facc15; }
         #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 2001; border-bottom: 1px solid #334155; }
-        #debug-bar { position: fixed; top: 32px; left: 0; width: 100%; height: 32px; background: #ef4444; color: white; font-size: 11px; line-height: 32px; padding: 0 20px; z-index: 2001; font-weight: bold; }
+        #debug-bar { position: fixed; top: 32px; left: 0; width: 100%; height: 32px; background: #22c55e; color: white; font-size: 11px; line-height: 32px; padding: 0 20px; z-index: 2001; font-weight: bold; }
         .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 8px 0; font-size: 12px; color: #334155; }
     </style>
 </head>
 <body>
 
-<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">v2.4.0 LIVE</div></div>
-<div id="debug-bar">SYNCING DATA...</div>
+<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">v2.4.1 LIVE</div></div>
+<div id="debug-bar">SCANNING CSV ROWS...</div>
 
 <div id="intel-panel">
-    <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
-        <b id="intel-title" style="color:#facc15; text-transform:uppercase;">INTEL FEED</b>
-        <button onclick="closeIntel()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">CLOSE ✕</button>
+    <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+        <b id="intel-title" style="color:#facc15;">INTEL FEED</b>
+        <button onclick="closeIntel()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer;">CLOSE ✕</button>
     </div>
     <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:20px;"></div>
 </div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-        <img src="" id="card-flag" style="width:40px; border:1px solid #eee; border-radius:4px;">
+        <img src="" id="card-flag" style="width:40px; border:1px solid #eee;">
         <b id="card-name" style="font-size:20px; color:#1e40af;"></b>
     </div>
     <div class="stat-row"><span>Capital</span><b id="card-cap"></b></div>
@@ -66,13 +46,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-    let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
+    let map, geoLayer, isLocked = false, predictions = [], worldData = {};
 
-    // NEW v2.4.0: DEEP CLEAN STRIPS EVERYTHING BUT LETTERS/NUMBERS
-    function deepClean(str) {
-        if (!str) return "";
-        return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
+    function clean(str) { return str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : ''; }
 
     function initMap() {
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
@@ -87,18 +63,11 @@
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
             
-            // v2.4.0: Improved CSV parsing to handle hidden quotes/spaces better
+            // v2.4.1: Parse the WHOLE line to find the country anywhere
             predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
-                const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                const rawName = v[1] ? v[1].replace(/"/g, '').trim() : "";
-                return { 
-                    country: rawName,
-                    clean: deepClean(rawName),
-                    text: v[2] ? v[2].replace(/"/g, '').trim() : "", 
-                    date: v[0] 
-                };
+                return { rawLine: line, cleanLine: clean(line) };
             });
-            document.getElementById('debug-bar').innerText = `DEBUG: ${predictions.length} Predictions Loaded | Deep-Clean Matching Active`;
+            document.getElementById('debug-bar').innerText = `READY: ${predictions.length} Rows Scanned`;
 
             const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
             const gData = await gRes.json();
@@ -117,18 +86,17 @@
                 data.forEach(c => worldData[c.cca3] = c);
                 drawIcons(); 
             });
-
-        } catch (e) { document.getElementById('debug-bar').innerText = "DATA SYNC ERROR"; }
+        } catch (e) { document.getElementById('debug-bar').style.background = '#ef4444'; }
     }
 
     function drawIcons() {
         geoLayer.eachLayer(layer => {
-            const mapName = deepClean(layer.feature.properties.name);
-            const matches = predictions.filter(p => p.clean === mapName || mapName.includes(p.clean) || p.clean.includes(mapName));
-            
+            const countryKey = clean(layer.feature.properties.name);
+            const matches = predictions.filter(p => p.cleanLine.includes(countryKey));
             if (matches.length > 0) {
-                const icon = L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] });
-                L.marker(layer.getBounds().getCenter(), { icon: icon }).addTo(map).on('click', (e) => { 
+                L.marker(layer.getBounds().getCenter(), { 
+                    icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
+                }).addTo(map).on('click', (e) => { 
                     L.DomEvent.stopPropagation(e); 
                     doLock(layer.feature.properties.name, layer.feature.properties.iso_a3); 
                 });
@@ -138,55 +106,29 @@
 
     function updateUI(name, iso) {
         const d = worldData[iso];
-        const cleanMapName = deepClean(name);
-        const matches = predictions.filter(p => p.clean === cleanMapName || cleanMapName.includes(p.clean) || p.clean.includes(cleanMapName));
+        const countryKey = clean(name);
+        const matches = predictions.filter(p => p.cleanLine.includes(countryKey));
         
         document.getElementById('card-name').innerText = name;
         document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "--";
         document.getElementById('card-flag').src = d?.flags?.png || "";
         document.getElementById('hover-card').style.display = 'block';
-        fetchEco(iso);
 
         const panel = document.getElementById('intel-panel');
-        const body = document.getElementById('intel-body');
-        
         if (matches.length > 0) {
             panel.style.display = 'flex';
             document.getElementById('intel-title').innerText = name;
-            body.innerHTML = matches.map(p => `
-                <div style="margin-bottom:20px; border-bottom:1px solid #334155; padding-bottom:15px;">
-                    <div style="color:#facc15; font-size:11px; font-weight:bold;">${p.date}</div>
-                    <div style="margin-top:8px; line-height:1.6; font-size:14px; color:#f8fafc;">${p.text}</div>
+            document.getElementById('intel-body').innerHTML = matches.map(p => `
+                <div style="margin-bottom:15px; border-bottom:1px solid #334155; padding-bottom:10px; font-size:14px; line-height:1.6;">
+                    ${p.rawLine.split(',').slice(2).join(',').replace(/"/g, '')}
                 </div>
             `).join('');
-        } else {
-            panel.style.display = 'flex';
-            document.getElementById('intel-title').innerText = "NO MATCH";
-            body.innerHTML = `<div style="color:#94a3b8; font-size:13px;">
-                <b>Map:</b> "${name}" (Clean: ${cleanMapName})<br>
-                <b>CSV Samples:</b> ${predictions.slice(0,3).map(p => p.country + ' ('+p.clean+')').join(', ')}...
-            </div>`;
-        }
-    }
-
-    async function fetchEco(iso) {
-        if(!iso) return;
-        try {
-            const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&date=2022`);
-            const data = await res.json();
-            if(data[1]) {
-                data[1].forEach(ind => {
-                    if(ind.indicator.id === "NY.GDP.MKTP.CD") document.getElementById('card-gdp').innerText = ind.value ? "$" + (ind.value/1e12).toFixed(1) + "T" : "N/A";
-                    if(ind.indicator.id === "FP.CPI.TOTL.ZG") document.getElementById('card-inf').innerText = ind.value ? ind.value.toFixed(1) + "%" : "N/A";
-                });
-            }
-        } catch(e) {}
+        } else { panel.style.display = 'none'; }
     }
 
     function doLock(n, i) { isLocked = true; document.getElementById('map').classList.add('map-dimmed'); updateUI(n, i); }
     function closeIntel() { isLocked = false; document.getElementById('map').classList.remove('map-dimmed'); hideUI(); }
     function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
-
     initMap();
 </script>
 </body>
