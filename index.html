@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.4.0</title>
+    <title>Global Atlas | v2.4.1</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,7 +17,6 @@
         
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 10000; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
         
-        /* Layering Fixes */
         .leaflet-top.leaflet-left { z-index: 10001 !important; }
         #hover-card { position: fixed; top: 80px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid #ddd; pointer-events: none; }
         #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9998; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.95); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
@@ -30,7 +29,7 @@
 </head>
 <body>
 
-<div id="log">Status: Initializing Match Logic...</div>
+<div id="log">Status: Calibrating Regions...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -58,7 +57,6 @@
 
     function init() {
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-        
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.85 }).addTo(map);
 
@@ -95,24 +93,26 @@
                         });
                     }
                 }).addTo(map);
-                lb.innerText = "Status: Geography Ready.";
                 loadData();
             });
     }
 
-    // UPDATED MATCHING LOGIC FOR USA
+    // ADVANCED MATCHING: Handles USA and South America/Continent logic
     function getMatches(mapName) {
         const m = mapName.toLowerCase();
         return predictions.filter(p => {
             const c = (p["Country/Region"] || "").toLowerCase();
             
-            // Check for USA variations
-            const isMapUSA = m.includes("united states") || m === "usa";
-            const isDataUSA = c.includes("united states") || c === "usa";
+            // 1. USA Logic
+            if ((m.includes("united states") || m === "usa") && (c.includes("united states") || c === "usa")) return true;
             
-            if (isMapUSA && isDataUSA) return true;
+            // 2. South America Logic: Map "South America" tags to Brazil for visibility
+            if (m === "brazil" && c.includes("south america")) return true;
             
-            // Default containment check
+            // 3. Middle East Logic: Map to Saudi Arabia
+            if (m.includes("saudi arabia") && c.includes("middle east")) return true;
+
+            // 4. Default containment
             return c.includes(m) || m.includes(c);
         });
     }
@@ -129,7 +129,7 @@
                 return o;
             });
             drawBadges();
-            lb.innerText = "Status: Data Synced.";
+            lb.innerText = "Status: Data Operational.";
         });
 
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
@@ -150,11 +150,7 @@
             if (matches.length > 0) {
                 const center = layer.getBounds().getCenter();
                 L.marker(center, { 
-                    icon: L.divIcon({ 
-                        className: '', 
-                        html: `<div class="intel-badge">${matches.length}</div>`, 
-                        iconSize: [22, 22] 
-                    }) 
+                    icon: L.divIcon({ className: '', html: `<div class="intel-badge">${matches.length}</div>`, iconSize: [22, 22] }) 
                 }).addTo(map).on('click', (e) => {
                     L.DomEvent.stopPropagation(e);
                     isLocked = true;
