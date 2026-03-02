@@ -3,39 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.3.4-Fixed</title>
+    <title>Global Atlas | v2.3.4-Safe</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: -apple-system, sans-serif; }
-        #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; background: #020617; transition: opacity 0.4s ease; }
-        .map-dimmed { opacity: 0.35; filter: grayscale(0.5) contrast(1.1); }
+        #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 10; background: #020617; transition: opacity 0.4s; }
+        .map-dimmed { opacity: 0.35; filter: grayscale(0.5); }
         
-        /* TICKER */
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; border-bottom: 1px solid #334155; z-index: 10010; overflow: hidden; display: flex; align-items: center; }
-        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; z-index: 10011; }
-        #ticker-container { flex-grow: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
-        #ticker-content { white-space: nowrap; position: absolute; left: 0; will-change: transform; transform: translate3d(0,0,0); color: #94a3b8; font-size: 11px; }
+        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; border-bottom: 1px solid #334155; z-index: 10010; display: flex; align-items: center; }
+        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        #ticker-container { flex-grow: 1; overflow: hidden; position: relative; height: 100%; }
+        #ticker-content { white-space: nowrap; position: absolute; left: 0; color: #94a3b8; font-size: 11px; line-height: 32px; }
         .ticker-item { display: inline-block; margin-right: 60px; cursor: pointer; }
 
-        /* RIGHT HOVER CARD */
         #hover-card { position: fixed; top: 85px; right: 15px; z-index: 10005; background: white; padding: 18px; border-radius: 12px; display: none; width: 285px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
+        #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10006; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; flex-direction: column; }
         
-        /* LEFT INTEL PANEL */
-        #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10006; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; flex-direction: column; box-shadow: 0 25px 60px rgba(0,0,0,0.7); backdrop-filter: blur(12px); }
-        .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
-        #intel-body { overflow-y: auto; flex-grow: 1; }
-        
-        /* UI BUTTONS */
-        .close-btn { background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; color: #64748b; }
-        .close-btn-dark { background: rgba(255,255,255,0.1); color: white; }
-
-        /* HEAT BADGES */
+        .close-btn { background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; }
         .intel-badge { border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #facc15; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
         
         .stat-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; border-top: 1px solid #f8fafc; padding-top: 5px; }
-        .stat-val { color: #0f172a; font-weight: 700; text-align: right; }
+        .stat-val { color: #0f172a; font-weight: 700; }
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; border: 1px solid #334155; }
     </style>
 </head>
@@ -63,11 +53,11 @@
 </div>
 
 <div id="intel-panel">
-    <div class="intel-header">
+    <div style="padding:15px; background:#1e293b; border-bottom:1px solid #475569; display:flex; justify-content:space-between; align-items:center;">
         <span id="intel-title" style="color:#facc15; font-weight:800; font-size:11px;">ACTIVITY FEED</span>
-        <button class="close-btn close-btn-dark" onclick="closeIntel()">✕</button>
+        <button class="close-btn" style="background:rgba(255,255,255,0.1); color:white;" onclick="closeIntel()">✕</button>
     </div>
-    <div id="intel-body"></div>
+    <div id="intel-body" style="overflow-y:auto; flex-grow:1;"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -80,65 +70,70 @@
 
     const manualCoords = { "Russia": [55.75, 37.61], "United Kingdom": [51.50, -0.12], "USA": [38.89, -77.03] };
 
-    window.onload = () => { initMap(); };
-
+    // 1. Initialize Map IMMEDIATELY
     function initMap() {
+        lb.innerText = "Status: Mapping...";
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
+        
+        // Start background data loading
         fetchData();
     }
 
     async function fetchData() {
         const ts = Date.now();
         try {
-            // Load GeoJSON
-            const geoRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
-            const geoData = await geoRes.json();
-            geoLayer = L.geoJSON(geoData, {
-                style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.12)" },
-                onEachFeature: (f, layer) => {
-                    layer.on({
-                        mouseover: () => { if(!isLocked) { updateHover(f.properties.name, f.properties.iso_a3); showIntel(f.properties.name, false); }},
-                        mouseout: () => { if(!isLocked) hideUI(); },
-                        click: (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name, f.properties.iso_a3); }
-                    });
-                }
-            }).addTo(map);
+            // Load Geography (Doesn't block other loads)
+            fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`)
+                .then(r => r.json())
+                .then(data => {
+                    geoLayer = L.geoJSON(data, {
+                        style: { fillOpacity: 0, weight: 1, color: "rgba(255,255,255,0.12)" },
+                        onEachFeature: (f, layer) => {
+                            layer.on({
+                                mouseover: () => { if(!isLocked) { updateHover(f.properties.name, f.properties.iso_a3); showIntel(f.properties.name, false); }},
+                                mouseout: () => { if(!isLocked) hideUI(); },
+                                click: (e) => { L.DomEvent.stopPropagation(e); jumpTo(f.properties.name, f.properties.iso_a3); }
+                            });
+                        }
+                    }).addTo(map);
+                    if(predictions.length > 0) drawHeatBadges();
+                });
 
-            // Load CSVs
-            const predRes = await fetch(`predictions.csv?v=${ts}`);
-            const txt = await predRes.text();
-            predictions = txt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
+            // Load Predictions
+            const pRes = await fetch(`predictions.csv?v=${ts}`);
+            const pTxt = await pRes.text();
+            predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
                 const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 return { "Country/Region": v[1]?.replace(/"/g, '').trim(), "Prediction Description": v[2]?.replace(/"/g, '').trim(), "Date of Premonition": v[0] };
             });
 
-            const leadRes = await fetch(`leaders.csv?v=${ts}`);
-            const leadTxt = await leadRes.text();
-            leadTxt.split('\n').slice(1).forEach(row => {
-                const p = row.split(',');
-                if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+            // Load Leaders
+            fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
+                t.split('\n').slice(1).forEach(row => {
+                    const p = row.split(',');
+                    if(p[0]) leaderData[p[0].trim().toUpperCase()] = { name: p[1] };
+                });
             });
 
-            // Rest Countries
+            // Load World Data
             fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,capital,maps`).then(r => r.json()).then(data => {
                 data.forEach(c => worldData[c.cca3] = c);
-                drawHeatBadges(); // Call this only after we have geoLayer and worldData
+                if(geoLayer) drawHeatBadges();
             });
 
             runTicker();
             lb.innerText = "Status: Operational (v2.3.4)";
-        } catch (e) { lb.innerText = "Status: Error Loading Data"; }
+        } catch (e) { lb.innerText = "Status: Sync Error. Map Active."; }
     }
 
     function drawHeatBadges() {
+        if(!geoLayer) return;
         geoLayer.eachLayer(layer => {
             const n = layer.feature.properties.name;
             const m = predictions.filter(p => p["Country/Region"]?.toLowerCase() === n.toLowerCase());
             if (m.length > 0) {
-                const pos = manualCoords[n] || layer.getBounds().getCenter();
-                L.marker(pos, { 
+                L.marker(manualCoords[n] || layer.getBounds().getCenter(), { 
                     icon: L.divIcon({ className: '', html: `<div class="intel-badge">${m.length}</div>`, iconSize: [22, 22] }),
                     zIndexOffset: 1000
                 }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); jumpTo(n, layer.feature.properties.iso_a3); });
@@ -173,8 +168,6 @@
         document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "N/A";
         document.getElementById('card-leader').innerText = leaderData[code]?.name || "N/A";
         document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
-        
-        // Reset and Fetch
         ["gdp", "gdppc", "inf"].forEach(id => document.getElementById(`card-${id}`).innerText = "...");
         const fl = document.getElementById('card-flag');
         fl.src = d?.flags?.png || ""; fl.style.display = d?.flags ? 'block' : 'none';
@@ -186,7 +179,9 @@
         isLocked = true; currentCountry = name;
         document.getElementById('map').classList.add('map-dimmed');
         let center = manualCoords[name] || [20,0];
-        geoLayer.eachLayer(l => { if(l.feature.properties.name.toLowerCase() === name.toLowerCase()) { if(!manualCoords[name]) center = l.getBounds().getCenter(); }});
+        if(geoLayer) {
+            geoLayer.eachLayer(l => { if(l.feature.properties.name.toLowerCase() === name.toLowerCase()) { if(!manualCoords[name]) center = l.getBounds().getCenter(); }});
+        }
         map.flyTo(center, 4.5);
         updateHover(name, iso);
         showIntel(name, true);
@@ -215,4 +210,12 @@
         tickerPos -= 1;
         const content = document.getElementById('ticker-content');
         if (content && Math.abs(tickerPos) >= content.scrollWidth / 2) tickerPos = 0;
-        if (content) content.style.transform = `translate3d(${tickerPos}px, 0,
+        if (content) content.style.transform = `translate3d(${tickerPos}px, 0, 0)`;
+        requestAnimationFrame(animate);
+    }
+
+    // Fire it up
+    initMap();
+</script>
+</body>
+</html>
