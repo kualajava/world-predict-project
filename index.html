@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Atlas | v2.3.8</title>
+    <title>Global Atlas | v2.3.9</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -15,15 +15,29 @@
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #0f172a; overflow: hidden; font-family: sans-serif; }
         #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; background: #aad3df; }
         
-        /* UI Elements */
-        #log { position: fixed; bottom: 20px; left: 20px; z-index: 9999; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
-        #hover-card { position: fixed; top: 20px; right: 20px; z-index: 9999; background: white; padding: 15px; border-radius: 10px; display: none; width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); pointer-events: none; border: 1px solid #ddd; }
-        #intel-panel { position: fixed; top: 80px; left: 20px; z-index: 9998; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.95); border-radius: 12px; border: 1px solid #334155; color: white; display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); backdrop-filter: blur(10px); }
+        #log { position: fixed; bottom: 20px; left: 20px; z-index: 10000; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
         
-        /* Search Box Customization */
-        .leaflet-control-geocoder { border-radius: 8px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none !important; margin-top: 20px !important; margin-left: 20px !important; }
-        .leaflet-control-geocoder-icon { background-color: white !important; border-radius: 8px !important; }
+        /* SEARCH BAR: Forced to the top */
+        .leaflet-top.leaflet-left { z-index: 10001 !important; }
+        .leaflet-control-geocoder { margin-top: 15px !important; margin-left: 15px !important; border: 2px solid rgba(0,0,0,0.2) !important; }
 
+        /* HOVER CARD: Positioned to avoid search bar */
+        #hover-card { 
+            position: fixed; top: 80px; right: 20px; z-index: 9999; 
+            background: white; padding: 15px; border-radius: 10px; display: none; 
+            width: 240px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid #ddd; 
+            pointer-events: none; 
+        }
+
+        /* LEFT INTEL PANEL: Restored visibility */
+        #intel-panel { 
+            position: fixed; top: 80px; left: 20px; z-index: 9998; 
+            width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.95); 
+            border-radius: 12px; border: 1px solid #334155; color: white; 
+            display: none; overflow-y: auto; box-shadow: 0 20px 40px rgba(0,0,0,0.6); 
+            backdrop-filter: blur(10px); 
+        }
+        
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; }
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-text { font-size: 13px; line-height: 1.6; color: #f1f5f9; }
@@ -32,7 +46,7 @@
 </head>
 <body>
 
-<div id="log">Status: Initializing Universal Search...</div>
+<div id="log">Status: Optimizing Layers...</div>
 
 <div id="hover-card">
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
@@ -46,7 +60,7 @@
 <div id="intel-panel">
     <div class="intel-header">
         <span id="intel-title" style="color:#f6e05e; font-weight:800; font-size:11px; text-transform:uppercase;">Intel Feed</span>
-        <button onclick="closeIntel()" style="background:none; border:none; color:white; cursor:pointer;">✕</button>
+        <button onclick="closeIntel()" style="background:none; border:none; color:white; cursor:pointer; font-size:18px;">✕</button>
     </div>
     <div id="intel-body"></div>
 </div>
@@ -59,36 +73,16 @@
     let predictions = [], worldData = {}, leaderData = {};
 
     function init() {
-        lb.innerText = "Status: Loading Search Engine...";
-        
+        lb.innerText = "Status: Initializing Map...";
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         
-        // 1. BASE TERRAIN (The Mountains)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 8
-        }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.85 }).addTo(map);
 
-        // 2. REFERENCE OVERLAY (Borders, Cities, Rivers, Names)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
-            opacity: 0.85
-        }).addTo(map);
-
-        // 3. UNIVERSAL SEARCH BAR
-        L.Control.geocoder({
-            defaultMarkGeocode: false,
-            placeholder: "Search country, river, city...",
-            errorMessage: "Location not found."
-        })
-        .on('markgeocode', function(e) {
-            const bbox = e.geocode.bbox;
-            const poly = L.polygon([
-                bbox.getSouthEast(), bbox.getNorthEast(), bbox.getNorthWest(), bbox.getSouthWest()
-            ]);
-            map.fitBounds(poly.getBounds());
-        })
+        L.Control.geocoder({ defaultMarkGeocode: false, placeholder: "Search..." })
+        .on('markgeocode', function(e) { map.fitBounds(e.geocode.bbox); })
         .addTo(map);
 
-        // 4. INTERACTIVE HOVER LAYER
         fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson')
             .then(r => r.json())
             .then(geo => {
@@ -99,7 +93,7 @@
                             mouseover: () => {
                                 layer.setStyle({ fillOpacity: 0.1, fillColor: '#fff' });
                                 updateHover(f.properties.name, f.properties.iso_a3);
-                                if(!isLocked) showIntel(f.properties.name, false);
+                                if(!isLocked) showIntel(f.properties.name, false); 
                             },
                             mouseout: () => {
                                 layer.setStyle({ fillOpacity: 0 });
@@ -117,7 +111,7 @@
                         });
                     }
                 }).addTo(map);
-                lb.innerText = "Status: Search Active. Syncing Data...";
+                lb.innerText = "Status: Ready.";
                 loadData();
             });
     }
@@ -134,7 +128,6 @@
                 return o;
             });
             drawBadges();
-            lb.innerText = "Status: Atlas Fully Operational.";
         });
 
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
@@ -151,15 +144,19 @@
     function drawBadges() {
         geoLayer.eachLayer(layer => {
             const n = layer.feature.properties.name;
-            const matches = predictions.filter(p => {
-                const c = (p["Country/Region"] || "").toLowerCase();
-                const m = n.toLowerCase();
-                return c.includes(m) || m.includes(c);
-            });
+            const matches = getMatches(n);
             if (matches.length > 0) {
                 const center = layer.getBounds().getCenter();
                 L.marker(center, { icon: L.divIcon({ className: '', html: `<div class="intel-badge">${matches.length}</div>`, iconSize: [22, 22] }) }).addTo(map);
             }
+        });
+    }
+
+    function getMatches(name) {
+        return predictions.filter(p => {
+            const c = (p["Country/Region"] || "").toLowerCase();
+            const m = name.toLowerCase();
+            return c.includes(m) || m.includes(c);
         });
     }
 
@@ -174,12 +171,11 @@
     }
 
     function showIntel(name, lock = false) {
-        const matches = predictions.filter(p => {
-            const c = (p["Country/Region"] || "").toLowerCase();
-            const m = name.toLowerCase();
-            return c.includes(m) || m.includes(c);
-        });
-        if (matches.length === 0) return;
+        const matches = getMatches(name);
+        if (matches.length === 0) {
+            document.getElementById('intel-panel').style.display = 'none';
+            return;
+        }
         document.getElementById('intel-title').innerText = `${name} (${matches.length})`;
         document.getElementById('intel-body').innerHTML = matches.map(p => `
             <div class="pred-box">
