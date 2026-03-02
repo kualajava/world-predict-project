@@ -3,48 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.3.9</title>
+    <title>Global Atlas | v2.4.0</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
-        #map { position: absolute; top: 64px; bottom: 0; left: 0; right: 0; z-index: 1; background: #000; }
-        .map-dimmed { opacity: 0.15; filter: grayscale(1) blur(5px); pointer-events: none; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: sans-serif; }
+        #map { position: absolute; top: 64px; bottom: 0; left: 0; right: 0; z-index: 1; }
+        .map-dimmed { opacity: 0.15; filter: grayscale(1) blur(4px); pointer-events: none; }
 
-        /* PANEL v2.3.9 - High Visibility */
+        /* THE PANEL - STYLED FROM YOUR SCREENSHOT */
         #intel-panel { 
             position: fixed !important; 
             top: 80px !important; 
             left: 20px !important; 
             width: 400px !important; 
-            height: 75vh !important;
+            height: 80vh !important;
             background: #0f172a !important; 
             color: #fff !important; 
             display: none; 
             flex-direction: column; 
-            z-index: 2000000 !important; 
+            z-index: 2000; 
             border: 2px solid #facc15;
             border-radius: 12px;
             box-shadow: 0 0 50px rgba(0,0,0,1);
         }
 
-        #hover-card { position: fixed; top: 80px; right: 20px; width: 320px; background: white; border-radius: 12px; padding: 15px; display: none; z-index: 1999999; border: 1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        #hover-card { position: fixed; top: 80px; right: 20px; width: 320px; background: white; border-radius: 12px; padding: 15px; display: none; z-index: 1999; border: 1px solid #ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .heat-badge { background: #facc15 !important; border: 2px solid #000 !important; border-radius: 50% !important; color: #000 !important; font-weight: 900 !important; font-size: 13px !important; display: flex !important; align-items: center !important; justify-content: center !important; cursor: pointer !important; box-shadow: 0 0 15px #facc15; }
         
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 2000001; border-bottom: 1px solid #334155; }
-        #debug-bar { position: fixed; top: 32px; left: 0; width: 100%; height: 32px; background: #ef4444; color: white; font-size: 11px; line-height: 32px; padding: 0 20px; z-index: 2000001; font-weight: bold; }
-        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 8px 0; font-size: 12px; }
+        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 2001; border-bottom: 1px solid #334155; }
+        #debug-bar { position: fixed; top: 32px; left: 0; width: 100%; height: 32px; background: #ef4444; color: white; font-size: 11px; line-height: 32px; padding: 0 20px; z-index: 2001; font-weight: bold; }
+        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 8px 0; font-size: 12px; color: #334155; }
     </style>
 </head>
 <body>
 
-<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">v2.3.9 LIVE</div></div>
-<div id="debug-bar">INITIALIZING DATA...</div>
+<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">v2.4.0 LIVE</div></div>
+<div id="debug-bar">SYNCING DATA...</div>
 
 <div id="intel-panel">
     <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155;">
-        <b id="intel-title" style="color:#facc15; text-transform:uppercase;">INTEL</b>
+        <b id="intel-title" style="color:#facc15; text-transform:uppercase;">INTEL FEED</b>
         <button onclick="closeIntel()" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">CLOSE ✕</button>
     </div>
     <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:20px;"></div>
@@ -56,7 +56,7 @@
         <b id="card-name" style="font-size:20px; color:#1e40af;"></b>
     </div>
     <div class="stat-row"><span>Capital</span><b id="card-cap"></b></div>
-    <div class="stat-row"><span>Leader</span><b id="card-leader"></b></div>
+    <div class="stat-row"><span>Leader</span><b id="card-leader">--</b></div>
     <div class="stat-row"><span>GDP</span><b id="card-gdp">--</b></div>
     <div class="stat-row"><span>Inflation</span><b id="card-inf">--</b></div>
 </div>
@@ -68,13 +68,10 @@
 <script>
     let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
 
-    function normalize(name) {
-        if (!name) return "";
-        return name.toLowerCase()
-            .replace(/the\s+/g, '')
-            .replace(/republic\s+of\s+/g, '')
-            .replace(/united\s+states\s+of\s+america/g, 'usa')
-            .trim();
+    // NEW v2.4.0: DEEP CLEAN STRIPS EVERYTHING BUT LETTERS/NUMBERS
+    function deepClean(str) {
+        if (!str) return "";
+        return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
     function initMap() {
@@ -87,21 +84,22 @@
     async function loadData() {
         const ts = Date.now();
         try {
-            // 1. Predictions
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
+            
+            // v2.4.0: Improved CSV parsing to handle hidden quotes/spaces better
             predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
                 const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                const rawName = v[1] ? v[1].replace(/"/g, '').trim() : "";
                 return { 
-                    country: v[1]?.replace(/"/g, '').trim(), 
-                    norm: normalize(v[1]?.replace(/"/g, '')),
-                    text: v[2]?.replace(/"/g, '').trim(), 
+                    country: rawName,
+                    clean: deepClean(rawName),
+                    text: v[2] ? v[2].replace(/"/g, '').trim() : "", 
                     date: v[0] 
                 };
             });
-            document.getElementById('debug-bar').innerText = `DEBUG: ${predictions.length} Predictions Loaded | Normalization Active`;
+            document.getElementById('debug-bar').innerText = `DEBUG: ${predictions.length} Predictions Loaded | Deep-Clean Matching Active`;
 
-            // 2. Geography
             const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
             const gData = await gRes.json();
             geoLayer = L.geoJSON(gData, {
@@ -115,27 +113,24 @@
                 }
             }).addTo(map);
 
-            // 3. Meta
             fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,capital`).then(r => r.json()).then(data => {
                 data.forEach(c => worldData[c.cca3] = c);
-                drawIcons(); // Draw icons AFTER meta and geo are ready
+                drawIcons(); 
             });
 
-        } catch (e) { document.getElementById('debug-bar').innerText = "ERROR LOADING CSV"; }
+        } catch (e) { document.getElementById('debug-bar').innerText = "DATA SYNC ERROR"; }
     }
 
     function drawIcons() {
         geoLayer.eachLayer(layer => {
-            const mapName = layer.feature.properties.name;
-            const normMapName = normalize(mapName);
-            const matches = predictions.filter(p => p.norm === normMapName);
+            const mapName = deepClean(layer.feature.properties.name);
+            const matches = predictions.filter(p => p.clean === mapName || mapName.includes(p.clean) || p.clean.includes(mapName));
             
             if (matches.length > 0) {
-                const center = layer.getBounds().getCenter();
                 const icon = L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] });
-                L.marker(center, { icon: icon }).addTo(map).on('click', (e) => { 
+                L.marker(layer.getBounds().getCenter(), { icon: icon }).addTo(map).on('click', (e) => { 
                     L.DomEvent.stopPropagation(e); 
-                    doLock(mapName, layer.feature.properties.iso_a3); 
+                    doLock(layer.feature.properties.name, layer.feature.properties.iso_a3); 
                 });
             }
         });
@@ -143,8 +138,8 @@
 
     function updateUI(name, iso) {
         const d = worldData[iso];
-        const normName = normalize(name);
-        const matches = predictions.filter(p => p.norm === normName);
+        const cleanMapName = deepClean(name);
+        const matches = predictions.filter(p => p.clean === cleanMapName || cleanMapName.includes(p.clean) || p.clean.includes(cleanMapName));
         
         document.getElementById('card-name').innerText = name;
         document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "--";
@@ -165,13 +160,11 @@
                 </div>
             `).join('');
         } else {
-            // DIAGNOSTIC MODE: If no matches, show why
             panel.style.display = 'flex';
-            document.getElementById('intel-title').innerText = "NO MATCH FOUND";
+            document.getElementById('intel-title').innerText = "NO MATCH";
             body.innerHTML = `<div style="color:#94a3b8; font-size:13px;">
-                Searching for: "<b>${name}</b>"<br>
-                Normalized to: "<b>${normName}</b>"<br><br>
-                Check if your CSV uses exactly this name.
+                <b>Map:</b> "${name}" (Clean: ${cleanMapName})<br>
+                <b>CSV Samples:</b> ${predictions.slice(0,3).map(p => p.country + ' ('+p.clean+')').join(', ')}...
             </div>`;
         }
     }
@@ -179,7 +172,7 @@
     async function fetchEco(iso) {
         if(!iso) return;
         try {
-            const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&per_page=2&date=2022`);
+            const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&date=2022`);
             const data = await res.json();
             if(data[1]) {
                 data[1].forEach(ind => {
