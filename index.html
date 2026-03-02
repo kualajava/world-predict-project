@@ -3,27 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.7.2</title>
+    <title>Global Atlas | v2.7.3</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     
     <style>
         html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: -apple-system, sans-serif; }
-        #map { height: calc(100vh - 32px); width: 100vw; position: absolute; z-index: 1; background: #020617; transition: opacity 0.4s ease; top: 32px; }
+        
+        /* Fixed Map Height to avoid calc issues during boot */
+        #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; background: #020617; transition: opacity 0.4s ease; }
         .map-dimmed { opacity: 0.35; filter: grayscale(0.4) contrast(1.1); }
         
         /* TICKER SYSTEM */
         #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; border-bottom: 1px solid #334155; z-index: 10010; overflow: hidden; display: flex; align-items: center; }
-        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; z-index: 10011; box-shadow: 10px 0 20px rgba(0,0,0,0.5); }
+        #ticker-label { background: #ef4444; color: white; padding: 0 15px; height: 100%; display: flex; align-items: center; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px; z-index: 10011; }
         #ticker-container { flex-grow: 1; overflow: hidden; position: relative; height: 100%; display: flex; align-items: center; }
-        #ticker-content { white-space: nowrap; position: absolute; left: 0; will-change: transform; transform: translate3d(0,0,0); padding-left: 100%; }
-        .ticker-item { display: inline-block; color: #94a3b8; font-size: 11px; margin-right: 60px; cursor: pointer; transition: color 0.2s; padding: 5px 0; }
+        #ticker-content { white-space: nowrap; position: absolute; left: 0; will-change: transform; transform: translate3d(0,0,0); padding-left: 20px; color: #94a3b8; font-size: 11px; }
+        
+        .ticker-item { display: inline-block; margin-right: 60px; cursor: pointer; }
         .ticker-item:hover { color: #facc15; }
         .ticker-item b { color: #f1f5f9; margin-right: 8px; }
 
         #log { position: fixed; bottom: 20px; left: 20px; z-index: 10002; background: #000; color: #4ade80; padding: 8px 15px; font-size: 11px; border-radius: 5px; font-family: monospace; border: 1px solid #334155; pointer-events: none; }
         
+        /* PANELS */
         #hover-card { position: fixed; top: 85px; right: 15px; z-index: 9999; background: white; padding: 15px; border-radius: 12px; display: none; width: 260px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
         #intel-panel { position: fixed; top: 85px; left: 15px; z-index: 10005; width: 340px; max-height: 70vh; background: rgba(15, 23, 42, 0.98); border-radius: 12px; border: 1px solid #475569; color: white; display: none; overflow: hidden; box-shadow: 0 25px 60px rgba(0,0,0,0.7); backdrop-filter: blur(12px); flex-direction: column; }
         .intel-header { padding: 15px; background: #1e293b; border-bottom: 1px solid #475569; display: flex; justify-content: space-between; align-items: center; }
@@ -31,11 +35,13 @@
         #intel-search { width: 100%; background: #1e293b; border: 1px solid #475569; border-radius: 6px; padding: 8px 12px; color: white; font-size: 12px; box-sizing: border-box; }
         #intel-body { overflow-y: auto; flex-grow: 1; }
         .close-btn { position: absolute; top: 10px; right: 10px; background: #f1f5f9; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #64748b; }
+        
         .intel-badge { border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .pulse-red { animation: badge-pulse 1.8s infinite; background: #ef4444 !important; color: white !important; }
         .heat-orange { background: #f97316 !important; color: white !important; }
         .heat-yellow { background: #facc15 !important; }
         @keyframes badge-pulse { 0% { box-shadow: 0 0 0 0px rgba(239, 68, 68, 0.7); } 100% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); } }
+
         .pred-box { padding: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .pred-date { font-size: 10px; color: #94a3b8; font-weight: 800; text-transform: uppercase; margin-bottom: 6px; }
         .pred-text { font-size: 14px; line-height: 1.6; color: #f1f5f9; }
@@ -51,11 +57,11 @@
 <div id="ticker-wrap">
     <div id="ticker-label">Live Feed</div>
     <div id="ticker-container">
-        <div id="ticker-content" onmouseover="pauseTicker()" onmouseout="resumeTicker()"></div>
+        <div id="ticker-content" onmouseover="isPaused=true" onmouseout="isPaused=false"></div>
     </div>
 </div>
 
-<div id="log">Status: Connecting...</div>
+<div id="log">Status: Awaiting Map...</div>
 <div id="map"></div>
 
 <div id="hover-card">
@@ -94,19 +100,25 @@
         "United Kingdom": [55.3781, -3.4360]
     };
 
-    window.onload = () => { setTimeout(init, 500); };
+    window.onload = init;
 
     function init() {
         try {
-            const savedLat = localStorage.getItem('map_lat') || 20;
-            const savedLng = localStorage.getItem('map_lng') || 0;
-            const savedZoom = localStorage.getItem('map_zoom') || 2.2;
+            const lat = localStorage.getItem('map_lat') || 20;
+            const lng = localStorage.getItem('map_lng') || 0;
+            const zoom = localStorage.getItem('map_zoom') || 2.2;
 
-            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([savedLat, savedLng], savedZoom);
+            map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([lat, lng], zoom);
+            
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 8 }).addTo(map);
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
 
-            L.Control.geocoder({ defaultMarkGeocode: false, placeholder: "Search..." }).on('markgeocode', (e) => { map.flyTo(e.geocode.center, 5); }).addTo(map);
+            // Added safety for Geocoder
+            if(window.L.Control.geocoder) {
+                L.Control.geocoder({ defaultMarkGeocode: false, placeholder: "Search..." })
+                .on('markgeocode', (e) => { map.flyTo(e.geocode.center, 5); })
+                .addTo(map);
+            }
 
             map.on('moveend', () => {
                 localStorage.setItem('map_lat', map.getCenter().lat);
@@ -114,8 +126,10 @@
                 localStorage.setItem('map_zoom', map.getZoom());
             });
 
+            // Start Data Flow AFTER map is ready
+            lb.innerText = "Status: Loading Borders...";
             loadGeography();
-        } catch(e) { lb.innerText = "Status: Init Error."; }
+        } catch(e) { console.error(e); lb.innerText = "Status: Map Boot Fail."; }
     }
 
     function loadGeography() {
@@ -131,10 +145,11 @@
                     }
                 }).addTo(map);
                 loadData();
-            });
+            }).catch(err => { lb.innerText = "Status: Geo Load Fail."; });
     }
 
     function loadData() {
+        lb.innerText = "Status: Analyzing Intel...";
         const ts = Date.now();
         fetch(`predictions.csv?v=${ts}`).then(r => r.text()).then(txt => {
             const lines = txt.split('\n');
@@ -147,9 +162,10 @@
             });
             drawBadges();
             initTicker();
-            lb.innerText = "Status: Operational (v2.7.2)";
+            lb.innerText = "Status: Operational (v2.7.3)";
         });
 
+        // Background fetch (non-essential)
         fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(txt => {
             txt.split('\n').slice(1).forEach(row => {
                 const p = row.split(',');
@@ -165,11 +181,11 @@
         const recent = predictions.slice(-10).reverse();
         const html = recent.map(p => `<span class="ticker-item" onclick="tickerJump('${p["Country/Region"]}')"><b>[${p["Date of Premonition"]}]</b> ${p["Country/Region"]}: ${p["Prediction Description"].substring(0, 60)}...</span>`).join('');
         content.innerHTML = html + html; 
-        tickerPos = 0;
         requestAnimationFrame(animateTicker);
     }
 
     function animateTicker() {
         const content = document.getElementById('ticker-content');
         if (content && !isPaused) {
-            tickerPos -= tickerSpeed
+            tickerPos -= tickerSpeed;
+            if (Math.abs(tickerPos) >= (content.scrollWidth
