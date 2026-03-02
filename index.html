@@ -3,80 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Global Atlas | v2.3.7</title>
+    <title>Global Atlas | v2.3.8</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: -apple-system, sans-serif; }
+        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
         
-        #map { position: absolute; top: 32px; bottom: 0; left: 0; right: 0; z-index: 1; }
-        .map-dimmed { opacity: 0.25; filter: grayscale(1) blur(2px); pointer-events: none; }
+        #map { position: absolute; top: 64px; bottom: 0; left: 0; right: 0; z-index: 1; }
+        .map-dimmed { opacity: 0.2; filter: grayscale(1) blur(3px); pointer-events: none; }
 
-        /* THE ELUSIVE LEFT PANEL - v2.3.7 PORTAL MODE */
+        /* THE PANEL - v2.3.8 */
         #intel-panel { 
             position: fixed !important; 
-            top: 70px !important; 
+            top: 80px !important; 
             left: 20px !important; 
             width: 380px !important; 
-            height: 500px !important; /* FIXED HEIGHT FOR TESTING */
-            background: #111827 !important; /* Solid Dark Blue/Black */
-            color: #ffffff !important; 
-            display: none; /* Controlled by JS .style.display = 'flex' */
+            height: 70vh !important;
+            background: #0f172a !important; 
+            color: #fff !important; 
+            display: none; 
             flex-direction: column; 
-            z-index: 1000000 !important; /* Absolute top */
-            border: 2px solid #facc15 !important; /* Bright Yellow Border */
+            z-index: 999999 !important; 
+            border: 2px solid #facc15;
             border-radius: 12px;
-            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            box-shadow: 0 0 40px rgba(0,0,0,1);
             overflow: hidden;
         }
 
-        #hover-card { 
-            position: fixed; 
-            top: 70px; 
-            right: 20px; 
-            width: 300px; 
-            background: white; 
-            border-radius: 12px; 
-            padding: 20px; 
-            display: none; 
-            z-index: 99999; 
-            border: 1px solid #ddd;
-        }
-
+        #hover-card { position: fixed; top: 80px; right: 20px; width: 300px; background: white; border-radius: 12px; padding: 15px; display: none; z-index: 999998; border: 1px solid #ddd; }
         .heat-badge { background: #facc15; border: 2px solid #000; border-radius: 50%; color: #000; font-weight: 900; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .close-btn { background: #334155; border: none; color: white; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 10000; border-bottom: 1px solid #334155; }
-        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 10001; background: #ef4444; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; }
-        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 6px 0; font-size: 12px; }
+        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #0f172a; z-index: 1000000; border-bottom: 1px solid #334155; }
+        #debug-bar { position: fixed; top: 32px; left: 0; width: 100%; height: 22px; background: #ef4444; color: white; font-size: 10px; line-height: 22px; padding-left: 20px; z-index: 1000000; font-weight: bold; text-transform: uppercase; }
+        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 1000000; background: #334155; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; }
+        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 4px 0; font-size: 11px; }
     </style>
 </head>
 <body>
 
-<div id="ver-tag">BUILD v2.3.7</div>
-<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">v2.3.7 PORTAL ACTIVE</div></div>
+<div id="ver-tag">BUILD v2.3.8</div>
+<div id="ticker-wrap"><div id="ticker-content" style="color:#94a3b8; font-size:11px; line-height:32px; padding-left:20px;">SYSTEM LIVE</div></div>
+<div id="debug-bar">DEBUG: Loading Files...</div>
 
 <div id="intel-panel">
-    <div style="padding:15px; background:#1f2937; display:flex; justify-content:space-between; align-items:center;">
-        <b id="intel-title" style="color:#facc15; font-size:14px;">ACTIVITY FEED</b>
-        <button class="close-btn" onclick="closeIntel()">CLOSE ✕</button>
+    <div style="padding:15px; background:#1e293b; display:flex; justify-content:space-between; align-items:center;">
+        <b id="intel-title" style="color:#facc15;">ACTIVITY FEED</b>
+        <button onclick="closeIntel()" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">✕</button>
     </div>
-    <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:15px; font-size:14px; background:#111827;">
-        </div>
+    <div id="intel-body" style="overflow-y:auto; flex-grow:1; padding:15px; background:#0f172a;"></div>
 </div>
 
 <div id="hover-card">
-    <button style="float:right; border:none; background:none; cursor:pointer; font-size:18px;" onclick="closeIntel()">✕</button>
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-        <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
-        <span id="card-name" style="font-size:20px; font-weight:800; color:#2563eb;"></span>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+        <img src="" id="card-flag" style="width:30px;">
+        <b id="card-name" style="font-size:18px; color:#2563eb;"></b>
     </div>
-    <div id="card-meta">
-        <div class="stat-row"><span>Capital</span><b id="card-cap"></b></div>
-        <div class="stat-row"><span>Leader</span><b id="card-leader"></b></div>
-        <div class="stat-row"><span>Population</span><b id="card-pop"></b></div>
-    </div>
+    <div class="stat-row"><span>Capital</span><b id="card-cap"></b></div>
+    <div class="stat-row"><span>Leader</span><b id="card-leader"></b></div>
+    <div class="stat-row"><span>GDP</span><b id="card-gdp">--</b></div>
+    <div class="stat-row"><span>Inflation</span><b id="card-inf">--</b></div>
+    <button onclick="closeIntel()" style="width:100%; margin-top:10px; background:#f1f5f9; border:none; padding:5px; border-radius:4px; cursor:pointer;">CLOSE</button>
 </div>
 
 <div id="map"></div>
@@ -89,22 +76,37 @@
     function initMap() {
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.8 }).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.7 }).addTo(map);
         loadData();
     }
 
     async function loadData() {
         const ts = Date.now();
         try {
-            // Predictions
+            // 1. Geography
+            const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
+            const gData = await gRes.json();
+            geoLayer = L.geoJSON(gData, {
+                style: { fillOpacity: 0, weight: 1.5, color: "rgba(255,255,255,0.2)" },
+                onEachFeature: (f, layer) => {
+                    layer.on({
+                        mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color:'#facc15'}); updateUI(f.properties.name, f.properties.iso_a3); }},
+                        mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideUI(); }},
+                        click: (e) => { L.DomEvent.stopPropagation(e); doLock(f.properties.name, f.properties.iso_a3); }
+                    });
+                }
+            }).addTo(map);
+
+            // 2. Predictions
             const pRes = await fetch(`predictions.csv?v=${ts}`);
             const pTxt = await pRes.text();
             predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
                 const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 return { country: v[1]?.replace(/"/g, '').trim(), text: v[2]?.replace(/"/g, '').trim(), date: v[0] };
             });
+            document.getElementById('debug-bar').innerText = `DEBUG: Loaded ${predictions.length} predictions | CSV Link Active`;
 
-            // Leaders
+            // 3. Leaders
             fetch(`leaders.csv?v=${ts}`).then(r => r.text()).then(t => {
                 t.split('\n').slice(1).forEach(row => {
                     const p = row.split(',');
@@ -112,90 +114,66 @@
                 });
             });
 
-            // Geography
-            const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
-            const gData = await gRes.json();
-            geoLayer = L.geoJSON(gData, {
-                style: { fillOpacity: 0, weight: 1.5, color: "rgba(255,255,255,0.2)" },
-                onEachFeature: (f, layer) => {
-                    layer.on({
-                        mouseover: (e) => { 
-                            if(!isLocked) {
-                                e.target.setStyle({weight:3, color:'#facc15', fillOpacity:0.1});
-                                updateInterface(f.properties.name, f.properties.iso_a3); 
-                            }
-                        },
-                        mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideInterface(); }},
-                        click: (e) => { L.DomEvent.stopPropagation(e); doLock(f.properties.name, f.properties.iso_a3); }
-                    });
-                }
-            }).addTo(map);
-
-            // World Bank / RestCountries
-            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,capital`).then(r => r.json()).then(data => {
+            // 4. Icons & Meta
+            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,capital`).then(r => r.json()).then(data => {
                 data.forEach(c => worldData[c.cca3] = c);
                 drawIcons();
             });
 
-        } catch (e) { console.error("Load Error", e); }
+        } catch (e) { document.getElementById('debug-bar').innerText = "DEBUG: DATA FETCH ERROR"; }
     }
 
     function drawIcons() {
         geoLayer.eachLayer(layer => {
             const name = layer.feature.properties.name;
-            const matches = predictions.filter(p => p.country?.toLowerCase() === name.toLowerCase());
-            if (matches.length > 0) {
+            const count = predictions.filter(p => p.country?.toLowerCase().trim() === name.toLowerCase().trim()).length;
+            if (count > 0) {
                 L.marker(layer.getBounds().getCenter(), { 
-                    icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [22, 22] }) 
+                    icon: L.divIcon({ className: 'heat-badge', html: count, iconSize: [22, 22] }) 
                 }).addTo(map).on('click', (e) => { L.DomEvent.stopPropagation(e); doLock(name, layer.feature.properties.iso_a3); });
             }
         });
     }
 
-    function updateInterface(name, iso) {
+    function updateUI(name, iso) {
         const d = worldData[iso];
-        const matches = predictions.filter(p => p.country?.toLowerCase() === name.toLowerCase());
+        const matches = predictions.filter(p => p.country?.toLowerCase().trim() === name.toLowerCase().trim());
         
-        // Update Right Card
         document.getElementById('card-name').innerText = name;
         document.getElementById('card-cap').innerText = d?.capital ? d.capital[0] : "--";
-        document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
         document.getElementById('card-leader').innerText = leaderData[iso]?.name || "--";
         document.getElementById('card-flag').src = d?.flags?.png || "";
         document.getElementById('hover-card').style.display = 'block';
+        
+        fetchEco(iso);
 
-        // Update Left Panel
-        const panel = document.getElementById('intel-panel');
         if (matches.length > 0) {
-            panel.style.display = 'flex'; // FORCE SHOW
-            document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
+            document.getElementById('intel-panel').style.display = 'flex';
+            document.getElementById('intel-title').innerText = name.toUpperCase() + " FEED";
             document.getElementById('intel-body').innerHTML = matches.map(p => `
-                <div style="margin-bottom:20px; border-bottom:1px solid #374151; padding-bottom:10px;">
-                    <div style="color:#facc15; font-size:11px; font-weight:bold;">${p.date}</div>
-                    <div style="margin-top:5px; color:#e5e7eb; line-height:1.5;">${p.text}</div>
+                <div style="margin-bottom:15px; border-bottom:1px solid #334155; padding-bottom:10px;">
+                    <div style="color:#facc15; font-size:10px; font-weight:bold;">${p.date}</div>
+                    <div style="font-size:14px; color:#e2e8f0; margin-top:5px;">${p.text}</div>
                 </div>
             `).join('');
-        } else {
-            panel.style.display = 'none';
+        } else { document.getElementById('intel-panel').style.display = 'none'; }
+    }
+
+    async function fetchEco(iso) {
+        if(!iso) return;
+        const res = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&per_page=2&date=2021:2024`);
+        const data = await res.json();
+        if(data[1]) {
+            data[1].forEach(ind => {
+                if(ind.indicator.id === "NY.GDP.MKTP.CD") document.getElementById('card-gdp').innerText = ind.value ? "$" + (ind.value/1e12).toFixed(1) + "T" : "N/A";
+                if(ind.indicator.id === "FP.CPI.TOTL.ZG") document.getElementById('card-inf').innerText = ind.value ? ind.value.toFixed(1) + "%" : "N/A";
+            });
         }
     }
 
-    function doLock(name, iso) {
-        isLocked = true;
-        document.getElementById('map').classList.add('map-dimmed');
-        updateInterface(name, iso);
-    }
-
-    function closeIntel() {
-        isLocked = false;
-        document.getElementById('map').classList.remove('map-dimmed');
-        hideInterface();
-    }
-
-    function hideInterface() {
-        document.getElementById('intel-panel').style.display = 'none';
-        document.getElementById('hover-card').style.display = 'none';
-    }
+    function doLock(n, i) { isLocked = true; document.getElementById('map').classList.add('map-dimmed'); updateUI(n, i); }
+    function closeIntel() { isLocked = false; document.getElementById('map').classList.remove('map-dimmed'); hideUI(); }
+    function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
 
     initMap();
 </script>
