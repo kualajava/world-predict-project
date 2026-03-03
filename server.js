@@ -5,15 +5,25 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Updated to use Render's dynamic port
+const PORT = process.env.PORT || 3000; 
+
+// Versioning for debugging
+const BUILD_VERSION = "2.5.1-HARDWIRED";
 
 app.use(cors());
 
-// Hard-wired path resolution for the 'public' folder
-const publicPath = path.join(__dirname, 'public');
+// Ensure we find the public folder regardless of where Render starts the process
+const publicPath = path.resolve(__dirname, 'public');
 app.use(express.static(publicPath));
 
-// Route to fetch World Bank Economic Data without CORS blocks
+// Middleware to inject Version into every request for tracking
+app.use((req, res, next) => {
+    res.setHeader('X-Build-Version', BUILD_VERSION);
+    next();
+});
+
+app.get('/api/version', (req, res) => res.json({ version: BUILD_VERSION }));
+
 app.get('/api/economics/:iso', async (req, res) => {
     try {
         const { iso } = req.params;
@@ -21,32 +31,25 @@ app.get('/api/economics/:iso', async (req, res) => {
         const response = await axios.get(url);
         res.json(response.data);
     } catch (error) {
-        console.error("World Bank Error:", error.message);
-        res.status(500).json({ error: "Failed to fetch from World Bank" });
+        res.status(500).json({ error: "World Bank Bridge Offline" });
     }
 });
 
-// Hard-wired Route to serve CSVs from the /data folder
 app.get('/api/data/:filename', (req, res) => {
     const filePath = path.join(__dirname, 'data', req.params.filename);
-    
-    // Debugging log: This will show up in your Render Logs to tell us exactly where it's looking
-    console.log(`Searching for file: ${filePath}`);
-
     if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
     } else {
-        console.error(`File NOT found at: ${filePath}`);
-        res.status(404).send("File not found");
+        res.status(404).json({ error: `File ${req.params.filename} not found at ${filePath}` });
     }
 });
 
-// Fallback to serve index.html for any unknown routes (helps with refreshes)
+// Fallback to index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(publicPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Global Atlas Server running at http://localhost:${PORT}`);
-    console.log(`Static files served from: ${publicPath}`);
+    console.log(`--- GLOBAL ATLAS ${BUILD_VERSION} ---`);
+    console.log(`Serving from: ${publicPath}`);
 });
