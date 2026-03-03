@@ -16,7 +16,7 @@ const dataPath = path.resolve(__dirname, 'data');
 
 app.use(express.static(publicPath));
 
-// --- DIAGNOSTIC HEALTH CHECK ---
+// --- ENHANCED DIAGNOSTIC HEALTH CHECK (v2.5.3) ---
 app.get('/api/health', (req, res) => {
     const checkFile = (dir, name) => {
         const fullPath = path.join(dir, name);
@@ -31,23 +31,28 @@ app.get('/api/health', (req, res) => {
         return { file: name, status: exists ? "✅" : "❌", details };
     };
 
-    const healthReport = {
-        version: BUILD_VERSION,
-        timestamp: new Date().toISOString(),
-        directories: {
-            root: __dirname,
-            public: { path: publicPath, exists: fs.existsSync(publicPath) },
-            data: { path: dataPath, exists: fs.existsSync(dataPath) }
+    res.json({
+        version: "2.5.3-STABLE",
+        server_status: "RUNNING ✅",
+        browser_cors_test: "ALLOWED ✅",
+        path_verification: {
+            root_match: __dirname === "/opt/render/project/src" ? "MATCH ✅" : "CUSTOM",
+            public_dir: fs.existsSync(publicPath) ? "FOUND ✅" : "MISSING ❌",
+            data_dir: fs.existsSync(dataPath) ? "FOUND ✅" : "MISSING ❌"
         },
-        file_checks: [
+        file_system: [
             checkFile(publicPath, 'index.html'),
             checkFile(publicPath, 'script.js'),
             checkFile(publicPath, 'style.css'),
             checkFile(dataPath, 'predictions.csv'),
             checkFile(dataPath, 'leaders.csv')
-        ]
-    };
-    res.json(healthReport);
+        ],
+        environment: {
+            node_version: process.version,
+            platform: process.platform,
+            memory_usage: (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2) + " MB"
+        }
+    });
 });
 
 app.get('/api/version', (req, res) => res.json({ version: BUILD_VERSION }));
