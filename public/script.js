@@ -1,53 +1,39 @@
 let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
 
-// 1. HELPER: Clean strings for matching
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
-// 2. INITIALIZE MAP (with double-init protection)
 function initMap() {
-    // Check if map is already initialized to prevent the "Map container" error
-    if (map !== undefined && map !== null) { 
-        console.log("Map already initialized. Skipping...");
-        return; 
-    }
-    
+    if (map) return;
     try {
         map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.4 }).addTo(map);
         loadGlobalData();
-    } catch (e) {
-        console.error("Leaflet initialization failed:", e);
-    }
+    } catch (e) { console.error("Map Init Error", e); }
 }
 
-// 3. LOAD DATA FROM SERVER
 async function loadGlobalData() {
     try {
-        // Load Predictions from local API
-        const pRes = await fetch('/api/data/predictions.csv');
+        const [pRes, lRes, gRes, cRes] = await Promise.all([
+            fetch('/api/data/predictions.csv'),
+            fetch('/api/data/leaders.csv'),
+            fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson'),
+            fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies')
+        ]);
+
         const pTxt = await pRes.text();
-        predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
+        predictions = pTxt.split('\n').slice(1).filter(l => l.trim()).map(line => {
             const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            return {
-                author: v[1], title: v[2], date: v[3], country: v[5], 
-                meta: v[6], from: v[7], to: v[8], desc: v[9],
-                cleanRow: clean(line)
-            };
+            return { author: v[1], title: v[2], date: v[3], country: v[5], meta: v[6], from: v[7], to: v[8], desc: v[9], cleanRow: clean(line) };
         });
 
-        // Load Leaders from local API
-        const lRes = await fetch('/api/data/leaders.csv');
         const lTxt = await lRes.text();
         lTxt.split('\n').slice(1).forEach(row => {
             const p = row.split(',');
             if(p[0]) leaderData[clean(p[0])] = p[1];
         });
 
-        // Load Map Boundaries
-        const gRes = await fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson');
         const gData = await gRes.json();
-        
         geoLayer = L.geoJSON(gData, {
             style: { fillOpacity: 0, weight: 1.2, color: "rgba(255,255,255,0.2)" },
             onEachFeature: (f, layer) => {
@@ -59,17 +45,14 @@ async function loadGlobalData() {
             }
         }).addTo(map);
 
-        // Load RestCountries Meta (Flags, Population, Currency)
-        const cRes = await fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies`);
         const cData = await cRes.json();
         cData.forEach(c => worldData[c.cca3] = c);
         
         drawHeatIcons();
-        console.log("System Ready: Build v2.5.0");
-    } catch (e) { console.error("Initialization failed", e); }
+        console.log("Global Atlas v2.6.0 Online");
+    } catch (e) { console.error("Data Load Failure", e); }
 }
 
-// 4. DRAW PREDICTION BADGES
 function drawHeatIcons() {
     geoLayer.eachLayer(layer => {
         const countryKey = clean(layer.feature.properties.name);
@@ -85,16 +68,14 @@ function drawHeatIcons() {
     });
 }
 
-// 5. UPDATE UI (SIDE PANEL & DATA CARD)
 async function updateUI(name, iso) {
     const d = worldData[iso];
     const countryKey = clean(name);
     const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
     
-    // Fill Data Card
     document.getElementById('card-name').innerText = name;
     document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
-    document.getElementById('card-leader').innerText = leaderData[countryKey] || "Pending Match...";
+    document.getElementById('card-leader').innerText = leaderData[countryKey] || "Pending...";
     document.getElementById('card-flag').src = d?.flags?.png || "";
     
     if (d?.currencies) {
@@ -102,12 +83,9 @@ async function updateUI(name, iso) {
         document.getElementById('card-cur').innerText = `${code} (${d.currencies[code].symbol || ''})`;
     }
 
-    // Fetch Economic Data via our Server Proxy
     fetchEconomicData(iso);
-
     document.getElementById('hover-card').style.display = 'block';
 
-    // Fill Intel Panel
     const panel = document.getElementById('intel-panel');
     if (matches.length > 0) {
         panel.style.display = 'flex';
@@ -117,45 +95,40 @@ async function updateUI(name, iso) {
                 <div class="pred-meta">${p.author} • ${p.date}</div>
                 <div class="pred-title">${p.title.replace(/"/g,'')}</div>
                 <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
-                <div class="pred-footer">Range: ${p.from} to ${p.to} • Tag: ${p.meta}</div>
+                <div class="pred-footer">Validity: ${p.from} to ${p.to} • Tags: ${p.meta}</div>
             </div>
         `).join('');
     } else { panel.style.display = 'none'; }
 }
 
-// 6. FETCH ECONOMIC DATA (Via Node Server)
 async function fetchEconomicData(iso) {
     if (!iso || iso === "-99") return;
-    document.getElementById('card-gdp').innerText = "FETCHING...";
-    document.getElementById('card-inf').innerText = "FETCHING...";
+    const gdpEl = document.getElementById('card-gdp');
+    const infEl = document.getElementById('card-inf');
+    gdpEl.innerText = "LINKING...";
+    infEl.innerText = "LINKING...";
 
     try {
         const response = await fetch(`/api/economics/${iso}`);
         const data = await response.json();
-        
-        if (data && data[1]) {
+        if (data && data[1] && Array.isArray(data[1])) {
             let gdp = "N/A", inf = "N/A";
             data[1].forEach(item => {
                 if (item.value) {
-                    if (item.indicator.id === "NY.GDP.MKTP.CD" && gdp === "N/A") gdp = "$" + (item.value / 1e12).toFixed(2) + "T";
-                    if (item.indicator.id === "FP.CPI.TOTL.ZG" && inf === "N/A") inf = item.value.toFixed(1) + "%";
+                    if (item.indicator.id === "NY.GDP.MKTP.CD" && gdp === "N/A") 
+                        gdp = "$" + (item.value / 1e12).toFixed(2) + "T";
+                    if (item.indicator.id === "FP.CPI.TOTL.ZG" && inf === "N/A") 
+                        inf = item.value.toFixed(1) + "%";
                 }
             });
-            document.getElementById('card-gdp').innerText = gdp;
-            document.getElementById('card-inf').innerText = inf;
+            gdpEl.innerText = gdp;
+            infEl.innerText = inf;
         }
-    } catch (e) { 
-        document.getElementById('card-gdp').innerText = "SERVER ERROR"; 
-    }
+    } catch (e) { gdpEl.innerText = "OFFLINE"; }
 }
 
-function lockUI(n, i) { isLocked = true; document.getElementById('map').classList.add('map-dimmed'); updateUI(n, i); }
-function closeUI() { isLocked = false; document.getElementById('map').classList.remove('map-dimmed'); hideUI(); }
-function hideUI() { 
-    document.getElementById('intel-panel').style.display = 'none'; 
-    document.getElementById('hover-card').style.display = 'none'; 
-}
+function lockUI(n, i) { isLocked = true; updateUI(n, i); }
+function closeUI() { isLocked = false; document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
+function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
 
-// Single call to start the application
-console.log("Global Atlas v2.5.3 UI Initializing...");
 initMap();
