@@ -147,3 +147,4 @@ function hideUI() {
 }
 
 initMap();
+console.log("Global Atlas v2.5.1 UI Loaded"); initMap();
