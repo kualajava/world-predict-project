@@ -31,10 +31,11 @@ async function loadGlobalData() {
         geoLayer = L.geoJSON(gData, {
             style: { fillOpacity: 0, weight: 1.2, color: "rgba(255,255,255,0.2)" },
             onEachFeature: (f, layer) => {
+                const iso = f.properties.iso_a3 || f.properties.ISO_A3 || f.properties.iso_a2;
                 layer.on({
-                    mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color: '#facc15'}); updateUI(f.properties.name, f.properties.iso_a3 || f.properties.ISO_A3); }},
+                    mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color: '#facc15'}); updateUI(f.properties.name, iso); }},
                     mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideUI(); }},
-                    click: (e) => { L.DomEvent.stopPropagation(e); lockUI(f.properties.name, f.properties.iso_a3 || f.properties.ISO_A3); }
+                    click: (e) => { L.DomEvent.stopPropagation(e); lockUI(f.properties.name, iso); }
                 });
             }
         }).addTo(map);
@@ -53,7 +54,8 @@ function drawHeatIcons() {
                 icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
             }).addTo(map).on('click', (e) => { 
                 L.DomEvent.stopPropagation(e); 
-                lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3); 
+                const f = layer.feature;
+                lockUI(f.properties.name, f.properties.iso_a3 || f.properties.ISO_A3); 
             });
         }
     });
@@ -97,21 +99,21 @@ async function fetchEconomicData(iso) {
     try {
         const response = await fetch(`/api/economics/${iso}`);
         const data = await response.json();
-        if (data && data[1] && Array.isArray(data[1])) {
-            let gdp = "N/A", inf = "N/A";
-            // Sort by date to get most recent valid entry
-            const sorted = data[1].sort((a,b) => b.date - a.date);
-            const latestGDP = sorted.find(i => i.indicator.id === "NY.GDP.MKTP.CD" && i.value !== null);
-            const latestInf = sorted.find(i => i.indicator.id === "FP.CPI.TOTL.ZG" && i.value !== null);
-            if (latestGDP) gdp = "$" + (latestGDP.value / 1e12).toFixed(2) + "T";
-            if (latestInf) inf = latestInf.value.toFixed(1) + "%";
-            gdpEl.innerText = gdp;
-            infEl.innerText = inf;
-        } else {
-            gdpEl.innerText = "DATA GAP";
-            infEl.innerText = "DATA GAP";
+        
+        let gdp = "DATA GAP", inf = "DATA GAP";
+
+        if (data.gdp && Array.isArray(data.gdp)) {
+            const latest = data.gdp.find(i => i.value !== null);
+            if (latest) gdp = "$" + (latest.value / 1e12).toFixed(2) + "T";
         }
-    } catch (e) { gdpEl.innerText = "OFFLINE"; }
+        if (data.inflation && Array.isArray(data.inflation)) {
+            const latest = data.inflation.find(i => i.value !== null);
+            if (latest) inf = latest.value.toFixed(1) + "%";
+        }
+
+        gdpEl.innerText = gdp;
+        infEl.innerText = inf;
+    } catch (e) { gdpEl.innerText = "OFFLINE"; infEl.innerText = "OFFLINE"; }
 }
 
 function lockUI(n, i) { isLocked = true; updateUI(n, i); }
