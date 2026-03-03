@@ -38,9 +38,9 @@ async function loadGlobalData() {
             style: { fillOpacity: 0, weight: 1.2, color: "rgba(255,255,255,0.2)" },
             onEachFeature: (f, layer) => {
                 layer.on({
-                    mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color: '#facc15'}); updateUI(f.properties.name, f.properties.iso_a3); }},
+                    mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color: '#facc15'}); updateUI(f.properties.name, f.properties.iso_a3 || f.properties.ISO_A3); }},
                     mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideUI(); }},
-                    click: (e) => { L.DomEvent.stopPropagation(e); lockUI(f.properties.name, f.properties.iso_a3); }
+                    click: (e) => { L.DomEvent.stopPropagation(e); lockUI(f.properties.name, f.properties.iso_a3 || f.properties.ISO_A3); }
                 });
             }
         }).addTo(map);
@@ -58,24 +58,27 @@ function drawHeatIcons() {
         const countryKey = clean(layer.feature.properties.name);
         const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
         if (matches.length > 0) {
-            L.marker(layer.getBounds().getCenter(), { 
+            const marker = L.marker(layer.getBounds().getCenter(), { 
                 icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
-            }).addTo(map).on('click', (e) => { 
+            }).addTo(map);
+            
+            marker.on('click', (e) => { 
                 L.DomEvent.stopPropagation(e); 
-                lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3); 
+                lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3); 
             });
         }
     });
 }
 
 async function updateUI(name, iso) {
+    if (!iso || iso === "-99") return;
     const d = worldData[iso];
     const countryKey = clean(name);
     const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
     
     document.getElementById('card-name').innerText = name;
-    document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
-    document.getElementById('card-leader').innerText = leaderData[countryKey] || "Pending...";
+    document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "Contacting...";
+    document.getElementById('card-leader').innerText = leaderData[countryKey] || "Unknown";
     document.getElementById('card-flag').src = d?.flags?.png || "";
     
     if (d?.currencies) {
@@ -102,7 +105,6 @@ async function updateUI(name, iso) {
 }
 
 async function fetchEconomicData(iso) {
-    if (!iso || iso === "-99") return;
     const gdpEl = document.getElementById('card-gdp');
     const infEl = document.getElementById('card-inf');
     gdpEl.innerText = "LINKING...";
@@ -111,6 +113,8 @@ async function fetchEconomicData(iso) {
     try {
         const response = await fetch(`/api/economics/${iso}`);
         const data = await response.json();
+        console.log(`Economy Check for ${iso}:`, data);
+        
         if (data && data[1] && Array.isArray(data[1])) {
             let gdp = "N/A", inf = "N/A";
             data[1].forEach(item => {
@@ -123,12 +127,25 @@ async function fetchEconomicData(iso) {
             });
             gdpEl.innerText = gdp;
             infEl.innerText = inf;
+        } else {
+            gdpEl.innerText = "DATA GAP";
+            infEl.innerText = "DATA GAP";
         }
-    } catch (e) { gdpEl.innerText = "OFFLINE"; }
+    } catch (e) { 
+        console.error("Fetch Error:", e);
+        gdpEl.innerText = "OFFLINE"; 
+    }
 }
 
 function lockUI(n, i) { isLocked = true; updateUI(n, i); }
-function closeUI() { isLocked = false; document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
-function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
+function closeUI() { 
+    isLocked = false; 
+    document.getElementById('intel-panel').style.display = 'none'; 
+    document.getElementById('hover-card').style.display = 'none'; 
+}
+function hideUI() { 
+    document.getElementById('intel-panel').style.display = 'none'; 
+    document.getElementById('hover-card').style.display = 'none'; 
+}
 
 initMap();
