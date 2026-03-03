@@ -2,54 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Global Atlas | v2.4.6</title>
+    <title>Global Atlas | v2.5.0 Modular</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        :root { --panel-bg: #0f172a; --accent: #facc15; --text: #f8fafc; --danger: #ef4444; }
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
-        
-        #ticker-wrap { position: fixed; top: 0; left: 0; width: 100%; height: 32px; background: #000; z-index: 3000; border-bottom: 1px solid #1e293b; display: flex; }
-        #ticker-label { background: var(--accent); color: #000; padding: 0 15px; line-height: 32px; font-weight: 900; font-size: 10px; z-index: 3001; }
-        #ticker-scroll { white-space: nowrap; line-height: 32px; color: #64748b; font-size: 11px; animation: scroll 60s linear infinite; padding-left: 100%; }
-        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
-
-        #toolbar { position: fixed; top: 32px; left: 0; width: 100%; height: 40px; background: #1e293b; z-index: 2500; display: flex; align-items: center; padding: 0 20px; gap: 20px; border-bottom: 1px solid #334155; }
-        #search-input { background: #0f172a; border: 1px solid #334155; color: white; padding: 4px 12px; border-radius: 4px; width: 250px; font-size: 13px; }
-
-        #map { position: absolute; top: 72px; bottom: 0; left: 0; right: 0; z-index: 1; }
-        .map-dimmed { opacity: 0.15; filter: grayscale(1) blur(5px); pointer-events: none; }
-        .heat-badge { background: var(--accent) !important; border: 2px solid #000 !important; border-radius: 50% !important; color: #000 !important; font-weight: 900 !important; font-size: 13px !important; display: flex !important; align-items: center !important; justify-content: center !important; box-shadow: 0 0 15px var(--accent); cursor: pointer; }
-
-        /* LEFT PANEL (PER YOUR HEADERS) */
-        #intel-panel { position: fixed; top: 85px; left: 20px; width: 450px; height: 80vh; background: var(--panel-bg); color: var(--text); display: none; flex-direction: column; z-index: 2000; border: 1px solid #334155; border-left: 4px solid var(--accent); border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.8); }
-        .intel-header { padding: 15px; background: #1e293b; display: flex; justify-content: space-between; align-items: center; }
-        .intel-scroll { overflow-y: auto; flex-grow: 1; }
-        .prediction-card { padding: 20px; border-bottom: 1px solid #1e293b; }
-        .pred-meta { font-size: 10px; color: var(--accent); font-weight: 800; text-transform: uppercase; margin-bottom: 5px; }
-        .pred-title { font-size: 15px; font-weight: bold; color: #fff; margin-bottom: 8px; }
-        .pred-desc { font-size: 13px; color: #94a3b8; line-height: 1.5; }
-        .pred-footer { margin-top: 10px; font-size: 11px; color: #64748b; }
-
-        /* RIGHT DATA CARD */
-        #hover-card { position: fixed; top: 85px; right: 20px; width: 340px; background: white; border-radius: 12px; padding: 20px; display: none; z-index: 1999; box-shadow: 0 10px 30px rgba(0,0,0,0.3); border: 1px solid #e2e8f0; }
-        .stat-row { display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding: 10px 0; font-size: 12px; color: #475569; }
-        .stat-val { font-weight: 700; color: #0f172a; }
-        
-        #ver-tag { position: fixed; bottom: 10px; right: 10px; z-index: 4000; background: #334155; color: white; padding: 4px 8px; font-size: 10px; border-radius: 4px; }
-    </style>
-</head>
+    <link rel="stylesheet" href="style.css"> </head>
 <body>
-
-<div id="ver-tag">BUILD v2.4.6</div>
 
 <div id="ticker-wrap">
     <div id="ticker-label">WORLD FEED</div>
-    <div id="ticker-scroll" id="ticker-text">INITIALIZING SECURE DATA STREAMS... v2.4.6 READY...</div>
-</div>
-
-<div id="toolbar">
-    <input type="text" id="search-input" placeholder="Search Country..." onkeyup="handleSearch(event)">
-    <div id="debug-status" style="font-size:10px; font-weight:bold; color:#22c55e;">STATUS: SYSTEM ACTIVE</div>
+    <div id="ticker-scroll">SYSTEM LIVE: v2.5.0 SECURE BRIDGE ACTIVE...</div>
 </div>
 
 <div id="intel-panel">
@@ -61,174 +21,22 @@
 </div>
 
 <div id="hover-card">
-    <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-        <div style="display:flex; align-items:center; gap:10px;">
+    <div id="card-content">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
             <img src="" id="card-flag" style="width:35px; border:1px solid #eee;">
             <b id="card-name" style="font-size:18px; color:#1e40af;"></b>
         </div>
-        <button onclick="closeUI()" style="border:none; background:none; color:#cbd5e1; cursor:pointer; font-size:20px;">✕</button>
+        <div class="stat-row"><span>Currency</span><span class="stat-val" id="card-cur">--</span></div>
+        <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader">--</span></div>
+        <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
+        <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
+        <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
+        <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">CLOSE</button>
     </div>
-    <div class="stat-row"><span>Currency ISO</span><span class="stat-val" id="card-cur">--</span></div>
-    <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader">--</span></div>
-    <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
-    <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
-    <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
-    <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold; color:#475569;">CLOSE DATA</button>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-<script>
-    let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
-
-    function clean(str) { return str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : ''; }
-
-    function initMap() {
-        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.4 }).addTo(map);
-        loadData();
-    }
-
-    async function loadData() {
-        const ts = Date.now();
-        try {
-            // Load Predictions
-            const pRes = await fetch(`predictions.csv?v=${ts}`);
-            const pTxt = await pRes.text();
-            predictions = pTxt.split('\n').slice(1).filter(l => l.trim() !== "").map(line => {
-                const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return {
-                    no: v[0], author: v[1], title: v[2], date: v[3], url: v[4],
-                    country: v[5], meta: v[6], from: v[7], to: v[8], desc: v[9],
-                    cleanRow: clean(line)
-                };
-            });
-
-            // Load Leaders
-            const lRes = await fetch(`leaders.csv?v=${ts}`);
-            const lTxt = await lRes.text();
-            lTxt.split('\n').slice(1).forEach(row => {
-                const p = row.split(',');
-                if(p[0]) leaderData[clean(p[0])] = p[1];
-            });
-
-            // Load Geography
-            const gRes = await fetch(`https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson`);
-            const gData = await gRes.json();
-            geoLayer = L.geoJSON(gData, {
-                style: { fillOpacity: 0, weight: 1.2, color: "rgba(255,255,255,0.2)" },
-                onEachFeature: (f, layer) => {
-                    layer.on({
-                        mouseover: (e) => { if(!isLocked) { e.target.setStyle({weight:3, color: '#facc15'}); updateUI(f.properties.name, f.properties.iso_a3); }},
-                        mouseout: (e) => { if(!isLocked) { geoLayer.resetStyle(e.target); hideUI(); }},
-                        click: (e) => { L.DomEvent.stopPropagation(e); lockUI(f.properties.name, f.properties.iso_a3); }
-                    });
-                }
-            }).addTo(map);
-
-            // Load Meta
-            fetch(`https://restcountries.com/v3.1/all?fields=name,cca3,flags,capital,population,currencies`).then(r => r.json()).then(data => {
-                data.forEach(c => worldData[c.cca3] = c);
-                drawIcons();
-            });
-        } catch (e) { document.getElementById('debug-status').innerText = "STATUS: LOAD ERROR"; }
-    }
-
-    function drawIcons() {
-        geoLayer.eachLayer(layer => {
-            const countryKey = clean(layer.feature.properties.name);
-            const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
-            if (matches.length > 0) {
-                L.marker(layer.getBounds().getCenter(), { 
-                    icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
-                }).addTo(map).on('click', (e) => { 
-                    L.DomEvent.stopPropagation(e); 
-                    lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3); 
-                });
-            }
-        });
-    }
-
-    function updateUI(name, iso) {
-        const d = worldData[iso];
-        const countryKey = clean(name);
-        const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
-        
-        document.getElementById('card-name').innerText = name;
-        document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
-        document.getElementById('card-leader').innerText = leaderData[countryKey] || "--";
-        document.getElementById('card-flag').src = d?.flags?.png || "";
-        
-        if (d?.currencies) {
-            const code = Object.keys(d.currencies)[0];
-            document.getElementById('card-cur').innerText = `${code} (${d.currencies[code].symbol || ''})`;
-            fetchEconomicData(iso);
-        }
-
-        document.getElementById('hover-card').style.display = 'block';
-
-        const panel = document.getElementById('intel-panel');
-        if (matches.length > 0) {
-            panel.style.display = 'flex';
-            document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
-            document.getElementById('intel-body').innerHTML = matches.map(p => `
-                <div class="prediction-card">
-                    <div class="pred-meta">${p.author} • ${p.date}</div>
-                    <div class="pred-title">${p.title.replace(/"/g,'')}</div>
-                    <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
-                    <div class="pred-footer">Range: ${p.from} to ${p.to} • Tag: ${p.meta}</div>
-                </div>
-            `).join('');
-        } else { panel.style.display = 'none'; }
-    }
-
-    // Switched to a standard Fetch with a very wide date window to ensure data hits
-    async function fetchEconomicData(iso) {
-        if (!iso || iso === "-99") return;
-        document.getElementById('card-gdp').innerText = "SYNCING...";
-        document.getElementById('card-inf').innerText = "SYNCING...";
-
-        try {
-            const response = await fetch(`https://api.worldbank.org/v2/country/${iso}/indicator/NY.GDP.MKTP.CD;FP.CPI.TOTL.ZG?format=json&date=2020:2024`);
-            const data = await response.json();
-            
-            if (data && data[1]) {
-                let gdp = "N/A", inf = "N/A";
-                data[1].forEach(item => {
-                    if (item.value) {
-                        if (item.indicator.id === "NY.GDP.MKTP.CD" && gdp === "N/A") gdp = "$" + (item.value / 1e12).toFixed(2) + "T";
-                        if (item.indicator.id === "FP.CPI.TOTL.ZG" && inf === "N/A") inf = item.value.toFixed(1) + "%";
-                    }
-                });
-                document.getElementById('card-gdp').innerText = gdp;
-                document.getElementById('card-inf').innerText = inf;
-            }
-        } catch (e) { 
-            document.getElementById('card-gdp').innerText = "DATA BLOCKED"; 
-            document.getElementById('card-inf').innerText = "DATA BLOCKED";
-        }
-    }
-
-    function handleSearch(e) {
-        if(e.key === "Enter") {
-            const query = clean(e.target.value);
-            geoLayer.eachLayer(layer => {
-                if(clean(layer.feature.properties.name).includes(query)) {
-                    map.fitBounds(layer.getBounds());
-                    lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3);
-                }
-            });
-        }
-    }
-
-    function lockUI(n, i) { isLocked = true; document.getElementById('map').classList.add('map-dimmed'); updateUI(n, i); }
-    function closeUI() { isLocked = false; document.getElementById('map').classList.remove('map-dimmed'); hideUI(); }
-    function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
-    
-    initMap();
-</script>
-</body>
+<script src="script.js"></script> </body>
 </html>
