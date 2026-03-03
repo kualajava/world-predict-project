@@ -3,12 +3,22 @@ let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderDat
 // 1. HELPER: Clean strings for matching
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
-// 2. INITIALIZE MAP
+// 2. INITIALIZE MAP (with double-init protection)
 function initMap() {
-    map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.4 }).addTo(map);
-    loadGlobalData();
+    // Check if map is already initialized to prevent the "Map container" error
+    if (map !== undefined && map !== null) { 
+        console.log("Map already initialized. Skipping...");
+        return; 
+    }
+    
+    try {
+        map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.4 }).addTo(map);
+        loadGlobalData();
+    } catch (e) {
+        console.error("Leaflet initialization failed:", e);
+    }
 }
 
 // 3. LOAD DATA FROM SERVER
