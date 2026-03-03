@@ -156,5 +156,6 @@ function hideUI() {
     document.getElementById('hover-card').style.display = 'none'; 
 }
 
+// Single call to start the application
+console.log("Global Atlas v2.5.3 UI Initializing...");
 initMap();
-console.log("Global Atlas v2.5.1 UI Loaded"); initMap();
