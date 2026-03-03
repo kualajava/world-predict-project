@@ -2,16 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Global Atlas | v2.6.0</title>
+    <title>Global Atlas | v2.6.2 PROD</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/style.css?v=2.6.0">
+    <link rel="stylesheet" href="style.css?v=262">
 </head>
 <body>
 
 <div id="ticker-wrap">
     <div id="ticker-label">WORLD FEED</div>
-    <div id="ticker-scroll">SYSTEM LIVE: v2.6.0 PRODUCTION BUILD ACTIVE ... WORLD BANK BRIDGE CONNECTED ... PROCESSING INTEL FEED ...</div>
+    <div id="ticker-scroll">PRODUCTION BUILD ACTIVE : v2.6.2 SECURE BRIDGE ONLINE : MONITORING GLOBAL INTEL...</div>
 </div>
+
+<div id="map"></div>
 
 <div id="intel-panel">
     <div class="intel-header">
@@ -32,13 +34,11 @@
         <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
         <div class="stat-row"><span>GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
         <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
-        <button onclick="closeUI()" style="width:100%; margin-top:15px; background:#f1f5f9; border:none; padding:10px; border-radius:6px; cursor:pointer; font-weight:bold;">CLOSE</button>
+        <button onclick="closeUI()" style="width:100%; margin-top:15px; padding:10px; background:#f1f5f9; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">CLOSE</button>
     </div>
 </div>
 
-<div id="map"></div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="/script.js?v=2.6.0"></script>
+<script src="script.js?v=262"></script>
 </body>
 </html>
