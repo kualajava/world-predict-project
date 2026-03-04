@@ -184,23 +184,43 @@ function drawHeatIcons() {
 
 async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
-    
     const d = worldData[iso];
     const rawCleanName = clean(name);
     const lookupKey = countryAliases[rawCleanName] || rawCleanName;
     
-    // DEBUG: Log this to your console so we can see what the map is sending
-    console.log("Hovering over:", name, "Key used:", lookupKey);
-
-    // FIX: Check aliases, then raw name, then a partial match
+    // NEW FUZZY LOOKUP
     const leaderName = leaderData[lookupKey] || 
                        leaderData[rawCleanName] || 
                        Object.keys(leaderData).find(k => rawCleanName.includes(k) || k.includes(rawCleanName)) || 
                        "Intel Update Pending";
 
     document.getElementById('card-leader').innerText = leaderName;
-    // ... rest of function
-}
+    document.getElementById('card-name').innerText = name;
+    document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
+    document.getElementById('card-flag').src = d?.flags?.png || "";
+    
+    if (d?.currencies) {
+        document.getElementById('card-cur').innerText = Object.keys(d.currencies)[0];
+    }
+
+    fetchEconomicData(iso);
+    document.getElementById('hover-card').style.display = 'block';
+
+    const panel = document.getElementById('intel-panel');
+    const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawCleanName));
+    
+    if (matches.length > 0) {
+        panel.style.display = 'flex';
+        document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
+        document.getElementById('intel-body').innerHTML = matches.map(p => `
+            <div class="prediction-card">
+                <div class="pred-meta">${p.author} • ${p.date}</div>
+                <div class="pred-title">${p.title.replace(/"/g,'')}</div>
+                <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
+            </div>
+        `).join('');
+    } else { panel.style.display = 'none'; }
+} // <--- ENSURE THIS BRACE IS PRESENT
 
 async function fetchEconomicData(iso) {
     const gdpEl = document.getElementById('card-gdp');
