@@ -83,6 +83,8 @@ function drawHeatIcons() {
 }
 
 function setupSearch() {
+    if (!window.GeoSearch) return setTimeout(setupSearch, 200);
+    
     const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: new window.GeoSearch.OpenStreetMapProvider(),
         style: 'bar', showMarker: false, autoClose: true
@@ -90,17 +92,33 @@ function setupSearch() {
     map.addControl(searchControl);
     
     const input = document.querySelector('.leaflet-geosearch-bar form input');
+    
     input.addEventListener('input', (e) => {
-        const q = clean(e.target.value);
-        if (q.length < 2) { geoLayer.eachLayer(l => geoLayer.resetStyle(l)); return; }
+        const query = clean(e.target.value);
+        if (query.length < 2) { 
+            geoLayer.eachLayer(l => geoLayer.resetStyle(l)); 
+            return; 
+        }
         
         geoLayer.eachLayer(l => {
-            const name = clean(l.feature.properties.name);
-            const matchesIntel = predictions.some(p => p.cleanRow.includes(q) && p.cleanRow.includes(name));
-            if (name.includes(q) || matchesIntel) {
-                l.setStyle({fillOpacity: 0.4, fillColor: '#facc15', color: '#facc15'});
+            const countryName = clean(l.feature.properties.name);
+            
+            // DEEP SEARCH: Checks if query is in country name 
+            // OR if query exists anywhere in the predictions CSV for this country
+            const hasDeepIntelMatch = predictions.some(p => 
+                p.cleanRow.includes(query) && 
+                (p.cleanRow.includes(countryName) || countryName.includes(clean(p.country)))
+            );
+
+            if (countryName.includes(query) || hasDeepIntelMatch) {
+                l.setStyle({
+                    fillOpacity: 0.5, 
+                    fillColor: '#facc15', 
+                    color: '#facc15', 
+                    weight: 3
+                });
             } else {
-                l.setStyle({fillOpacity: 0, color: "rgba(255,255,255,0.1)"});
+                l.setStyle({fillOpacity: 0, color: "rgba(255,255,255,0.1)", weight: 1});
             }
         });
     });
