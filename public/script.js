@@ -16,40 +16,33 @@ const countryAliases = {
 };
 
 // ... existing clean function and aliases ...
-
 function initMap() {
-    // PREVENT "Already Initialized" Error
-    if (map !== undefined && map !== null) { 
-        console.log("Map already initialized. Skipping...");
-        return; 
-    }
+    if (map !== undefined && map !== null) return;
 
-    // 1. Define bounds to roughly clip the world, but not too tightly
-    const southWest = L.latLng(-85, -200); // Expanded slightly west
-    const northEast = L.latLng(85, 200);  // Expanded slightly east
-    const bounds = L.latLngBounds(southWest, northEast);
+    const bounds = L.latLngBounds(L.latLng(-85, -200), L.latLng(85, 200));
 
     map = L.map('map', { 
         zoomSnap: 0.1, 
         attributionControl: false,
+        zoomControl: false, // 1. Disable the default top-left buttons
         maxBounds: bounds,         
-        maxBoundsViscosity: 0.5    // THE FIX: Soften the hard stop
-    }).setView([20, 0], 3.0); // THE FIX: Default zoom is now 3.0 (Tighter in)
+        maxBoundsViscosity: 0.5    
+    }).setView([20, 0], 3.0);
+
+    // 2. Add new zoom buttons specifically in the bottom-right
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
-        noWrap: true,              
-        bounds: bounds             
+        noWrap: true, bounds: bounds             
     }).addTo(map);
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { 
-        opacity: 0.4,
-        noWrap: true,
-        bounds: bounds
+        opacity: 0.4, noWrap: true, bounds: bounds
     }).addTo(map);
 
+    addSearchBar(); // 3. Call the new search function
     loadGlobalData();
 }
-
 // ... rest of the file ...
 
 async function loadGlobalData() {
