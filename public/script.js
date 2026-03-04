@@ -103,35 +103,23 @@ function drawHeatIcons() {
 
 async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
+    
     const d = worldData[iso];
-    const countryKey = clean(name);
-    const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
+    const rawCleanName = clean(name);
+    
+    // Check Alias Ledger first, then fall back to cleaned name
+    const lookupKey = countryAliases[rawCleanName] || rawCleanName;
+    const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawCleanName));
     
     document.getElementById('card-name').innerText = name;
     document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
-    document.getElementById('card-leader').innerText = leaderData[countryKey] || "Update Pending";
-    document.getElementById('card-flag').src = d?.flags?.png || "";
     
-    if (d?.currencies) {
-        const code = Object.keys(d.currencies)[0];
-        document.getElementById('card-cur').innerText = `${code}`;
-    }
-
-    fetchEconomicData(iso);
-    document.getElementById('hover-card').style.display = 'block';
-
-    const panel = document.getElementById('intel-panel');
-    if (matches.length > 0) {
-        panel.style.display = 'flex';
-        document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
-        document.getElementById('intel-body').innerHTML = matches.map(p => `
-            <div class="prediction-card">
-                <div class="pred-meta">${p.author} • ${p.date}</div>
-                <div class="pred-title">${p.title.replace(/"/g,'')}</div>
-                <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
-            </div>
-        `).join('');
-    } else { panel.style.display = 'none'; }
+    // SMART LEADER LOOKUP
+    const leaderName = leaderData[lookupKey] || leaderData[rawCleanName] || "Intel Update Pending";
+    document.getElementById('card-leader').innerText = leaderName;
+    
+    document.getElementById('card-flag').src = d?.flags?.png || "";
+    // ... rest of your existing function
 }
 
 async function fetchEconomicData(iso) {
