@@ -24,29 +24,18 @@
 <div id="intel-panel">
     <div class="intel-header">
         <b id="intel-title">INTEL</b>
-        <button onclick="closeUI()" style="background:var(--danger); color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">✕</button>
+        <button onclick="closeUI()" class="close-x">✕</button>
     </div>
     <div id="intel-body" class="intel-scroll"></div>
 </div>
 
 <div id="hover-card">
     <div class="card-header">
-        <b style="font-size: 10px; color: var(--accent); letter-spacing: 1px;">COUNTRY PROFILE</b>
-        <button onclick="closeUI()" style="background:none; color:white; border:none; cursor:pointer; font-size:16px;">✕</button>
-    </div>
-    <div id="card-content" class="card-body">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-            <img src="" id="card-flag" style="width:30px; border:1px solid #334155;">
-            <b id="card-name" style="font-size:16px; color:var(--accent);"></b>
-        </div>
-        <div class="stat-row"><span class="stat-label">Currency</span><span class="stat-val" id="card-cur">--</span></div>
-        <div class="stat-row"><span class="stat-label">Leader</span><span class="stat-val" id="card-leader">--</span></div>
-        <div class="stat-row"><span class="stat-label">Population</span><span class="stat-val" id="card-pop">--</span></div>
-        <div class="stat-row"><span class="stat-label">GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
-        <div class="stat-row"><span class="stat-label">Inflation</span><span class="stat-val" id="card-inf">--</span></div>
+        <b style="font-size: 10px; color: var(--accent);">DATA PROFILE</b>
+        <button onclick="closeUI()" class="close-x">✕</button>
     </div>
 </div>
-
+    
 <script src="script.js"></script>
 </body>
 </html>
