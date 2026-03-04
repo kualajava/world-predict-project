@@ -11,7 +11,7 @@ body, html {
 
 #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
 
-/* SLOW TICKER */
+/* INFINITE TICKER FIX */
 #ticker-wrap { 
     position: fixed; top: 0; width: 100%; height: 32px; 
     background: #000; z-index: 3000; display: flex; 
@@ -22,16 +22,46 @@ body, html {
     line-height: 32px; font-weight: 900; font-size: 11px; z-index: 3001;
 }
 #ticker-scroll { 
-    color: var(--accent); line-height: 32px; padding-left: 100%; 
-    white-space: nowrap; animation: ticker-slow 180s linear infinite; 
+    display: inline-block; white-space: nowrap; line-height: 32px;
+    animation: ticker-loop 120s linear infinite; 
     font-family: 'Courier New', monospace; font-size: 13px; font-weight: bold;
+    color: var(--accent);
 }
-@keyframes ticker-slow {
-    0% { transform: translateX(0); }
-    100% { transform: translateX(-500%); }
+#ticker-spacer { padding-left: 50vw; } /* Creates the gap before it loops */
+
+@keyframes ticker-loop {
+    0% { transform: translateX(100vw); }
+    100% { transform: translateX(-100%); }
 }
 
-/* Intelligence Panel (Left) */
+/* SEARCH BAR AT BOTTOM-RIGHT */
+.leaflet-top.leaflet-right {
+    top: auto !important;
+    bottom: 85px !important; /* Above Zoom buttons */
+    margin-right: 15px;
+    z-index: 5000 !important;
+}
+
+.leaflet-geosearch-bar {
+    background: var(--glass) !important;
+    border: 1px solid var(--accent) !important;
+    border-radius: 4px !important;
+    width: 300px !important;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.leaflet-geosearch-bar form input {
+    color: white !important;
+    background: transparent !important;
+}
+
+/* ZOOM BUTTONS BOTTOM-RIGHT */
+.leaflet-bottom.leaflet-right {
+    bottom: 20px !important;
+    margin-right: 15px;
+}
+
+/* CUSTOM UI PANELS */
 #intel-panel { 
     position: fixed; top: 85px; left: 20px; width: 450px; height: 80vh; 
     background: var(--glass); display: none; flex-direction: column; 
@@ -48,7 +78,6 @@ body, html {
 .pred-title { color: var(--accent); font-weight: bold; font-size: 15px; margin: 5px 0; }
 .pred-desc { font-size: 13px; line-height: 1.5; color: #cbd5e1; }
 
-/* Compact Hover Card (Right) */
 #hover-card { 
     position: fixed; top: 85px; right: 20px; width: 280px; 
     background: #1e293b; color: white; border-radius: 8px; 
@@ -60,75 +89,8 @@ body, html {
 .stat-label { color: #94a3b8; }
 .stat-val { font-weight: bold; color: var(--accent); }
 
-/* Marker Style */
 .heat-badge { 
     background: var(--accent); color: black; border-radius: 50%; 
     text-align: center; line-height: 26px; font-weight: 900; 
     border: 2px solid #000; cursor: pointer;
-}
-
-/* SEARCH & ZOOM ADJUSTMENTS */
-/* Fix Search Bar Position & Dark Mode Styling */
-.leaflet-top.leaflet-right {
-    top: 60px !important; /* Pushed down a bit more to be safe */
-    margin-right: 20px;
-    z-index: 5000 !important; /* Force it to the front */
-}
-
-/* SLOW TICKER - Force slow speed */
-#ticker-scroll {
-    animation: ticker-slow 240s linear infinite !important; /* Increased to 240s for extra crawl */
-}
-
-/* The Search Bar Container */
-.leaflet-geosearch-bar {
-    background: var(--glass) !important;
-    backdrop-filter: blur(10px);
-    border: 1px solid #334155 !important;
-    border-radius: 6px !important;
-    width: 280px !important; /* Matches the width of your Hover Card */
-}
-
-/* The Input Text */
-.leaflet-geosearch-bar form input {
-    color: var(--text) !important;
-    background: transparent !important;
-    font-size: 13px !important;
-    height: 35px !important;
-}
-
-/* The Results Dropdown */
-.leaflet-geosearch-bar .results {
-    background: var(--panel-bg) !important;
-    border: 1px solid #334155 !important;
-    color: var(--text) !important;
-}
-
-.leaflet-geosearch-bar .results > * {
-    border-bottom: 1px solid #1e293b !important;
-    padding: 8px !important;
-}
-
-.leaflet-geosearch-bar .results > *:hover {
-    background: #1e293b !important;
-    color: var(--accent) !important;
-}
-
-/* Enhanced Tactical Search Bar */
-.leaflet-geosearch-bar {
-    background: var(--glass) !important;
-    border: 1px solid var(--accent) !important; /* Yellow border to show it's active */
-    box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);
-}
-
-.leaflet-geosearch-bar form input::placeholder {
-    color: rgba(248, 250, 252, 0.5);
-    font-style: italic;
-}
-
-/* Ensure results list is readable */
-.leaflet-geosearch-bar .results.active {
-    padding: 0;
-    background: #0f172a !important;
-    border: 1px solid #334155;
 }
