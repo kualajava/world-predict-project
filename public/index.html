@@ -2,19 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Global Atlas | v2.6.7</title>
+    <title>Global Atlas | Tactical Interface</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.css" />
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-geosearch@latest/dist/bundle.min.js"></script>
-    <link rel="stylesheet" href="style.css?v=267">
 </head>
 <body>
 
 <div id="ticker-wrap">
     <div id="ticker-label">WORLD FEED</div>
     <div id="ticker-scroll">
-        <span id="ticker-content">INITIALIZING SECURE INTEL STREAM...</span>
+        <span id="ticker-content">CONNECTING TO SECURE DATA STREAM...</span>
     </div>
 </div>
 
@@ -30,7 +31,7 @@
 
 <div id="hover-card">
     <div class="card-header">
-        <b style="font-size: 12px; color: var(--accent); letter-spacing: 1px;">COUNTRY PROFILE</b>
+        <b style="font-size: 10px; color: var(--accent); letter-spacing: 1px;">COUNTRY PROFILE</b>
         <button onclick="closeUI()" style="background:none; color:white; border:none; cursor:pointer; font-size:16px;">✕</button>
     </div>
     <div id="card-content" class="card-body">
@@ -45,7 +46,7 @@
         <div class="stat-row"><span class="stat-label">Inflation</span><span class="stat-val" id="card-inf">--</span></div>
     </div>
 </div>
-    
-<script src="script.js?v=267"></script>
+
+<script src="script.js"></script>
 </body>
 </html>
