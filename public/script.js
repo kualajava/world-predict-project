@@ -34,16 +34,15 @@ async function loadGlobalData() {
         const pTxt = await pRes.text();
         predictions = pTxt.split('\n').slice(1).filter(l => l.trim()).map(line => {
             const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            return { title: v[2], country: v[5], desc: v[9], cleanRow: clean(line) };
+            return { title: (v[2]||'').replace(/"/g,''), country: v[5], desc: (v[9]||'').replace(/"/g,''), cleanRow: clean(line) };
         });
 
-        const tickerText = predictions.slice(-10).map(p => `${p.country.toUpperCase()}: ${p.title.replace(/"/g,'')}`).join('  |  ');
+        const tickerText = predictions.slice(-10).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  |  ');
         document.getElementById('ticker-content').innerText = `LIVE INTEL: ${tickerText} --- BRIDGE ONLINE --- `;
 
         const lTxt = await lRes.text();
         lTxt.split('\n').slice(1).forEach(row => {
             const p = row.split(',');
-            // FIXED: Key is p[0], Value (Leader) is p[1]
             if(p[0] && p[1]) leaderData[clean(p[0])] = p[1].trim();
         });
 
@@ -62,8 +61,24 @@ async function loadGlobalData() {
         const cData = await cRes.json();
         cData.forEach(c => worldData[c.cca3] = c);
         
+        drawHeatIcons(); // Restored Heat Map
         addSearchBar(); 
     } catch (e) { console.error(e); }
+}
+
+function drawHeatIcons() {
+    geoLayer.eachLayer(layer => {
+        const countryKey = clean(layer.feature.properties.name);
+        const count = predictions.filter(p => p.cleanRow.includes(countryKey)).length;
+        if (count > 0) {
+            L.marker(layer.getBounds().getCenter(), { 
+                icon: L.divIcon({ className: 'heat-badge', html: count, iconSize: [24, 24] }) 
+            }).addTo(map).on('click', (e) => { 
+                L.DomEvent.stopPropagation(e); 
+                lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3); 
+            });
+        }
+    });
 }
 
 function addSearchBar() {
@@ -91,8 +106,6 @@ async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
     const d = worldData[iso], rawClean = clean(name);
     const lookupKey = countryAliases[rawClean] || rawClean;
-    
-    // Improved Lookup Logic
     const leader = leaderData[lookupKey] || leaderData[rawClean] || "Update Pending";
 
     document.getElementById('card-name').innerText = name;
@@ -109,8 +122,8 @@ async function updateUI(name, iso) {
         document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
         document.getElementById('intel-body').innerHTML = matches.map(p => `
             <div class="prediction-card">
-                <div class="pred-title">${p.title.replace(/"/g,'')}</div>
-                <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
+                <span class="pred-title">${p.title}</span>
+                <div class="pred-desc">${p.desc}</div>
             </div>`).join('');
     } else panel.style.display = 'none';
 }
