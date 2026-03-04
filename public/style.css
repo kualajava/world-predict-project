@@ -60,19 +60,17 @@ body, html {
 .stat-label { color: #94a3b8; }
 .stat-val { font-weight: bold; color: var(--accent); }
 
+/* Marker Style */
 .heat-badge { 
     background: var(--accent); color: black; border-radius: 50%; 
     text-align: center; line-height: 26px; font-weight: 900; 
     border: 2px solid #000; cursor: pointer;
 }
 
-/* Ensure Leaflet controls stay clear of your custom UI */
-.leaflet-top.leaflet-right {
-    top: 85px; /* Pushes search bar below your top ticker */
-    margin-right: 20px;
-}
+/* SEARCH & ZOOM ADJUSTMENTS */
+.leaflet-top.leaflet-right { top: 45px !important; margin-right: 15px; }
+.leaflet-bottom.leaflet-right { bottom: 25px !important; margin-right: 15px; }
 
-.leaflet-bottom.leaflet-right {
-    bottom: 20px;
-    margin-right: 20px;
-}
+.leaflet-geosearch-bar { background: #1e293b !important; border: 1px solid #334155 !important; }
+.leaflet-geosearch-bar form input { color: white !important; background: transparent !important; }
+.leaflet-geosearch-bar .results { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; }
