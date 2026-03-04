@@ -1,6 +1,21 @@
 let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
+// 1. HELPER: Advanced Clean & Translation Ledger
+const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
+
+const countryAliases = {
+    "unitedstates": "usa",
+    "unitedstatesofamerica": "usa",
+    "russianfederation": "russia",
+    "peoplesrepublicofchina": "china",
+    "republicofindia": "india",
+    "federativerepublicofbrazil": "brazil",
+    "unitedkingdomofgreatbritainandnorthernireland": "uk",
+    "unitedkingdom": "uk",
+    "republicoffrance": "france"
+};
+
 function initMap() {
     // Define the world corners [South-West, North-East]
     const southWest = L.latLng(-85, -180);
