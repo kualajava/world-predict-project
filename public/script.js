@@ -9,6 +9,8 @@ const countryAliases = {
 
 // ... [Keep existing variables and clean() function] ...
 
+// ... existing variables and clean() ...
+
 async function loadGlobalData() {
     try {
         const [pRes, lRes, gRes, cRes] = await Promise.all([
@@ -21,19 +23,18 @@ async function loadGlobalData() {
         const pTxt = await pRes.text();
         predictions = pTxt.split('\n').slice(1).filter(l => l.trim()).map(line => {
             const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            // cleanRow stores the FULL CSV LINE for deep searching
+            // This captures the entire raw line for deep searching later
             return { title: (v[2]||'').replace(/"/g,''), country: v[5], desc: (v[9]||'').replace(/"/g,''), cleanRow: clean(line) };
         });
 
-        // SET UP SEAMLESS TICKER
-        const tickerString = predictions.slice(-15).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ') + "  •  ";
-        document.getElementById('ticker-content').innerText = tickerString;
-        document.getElementById('ticker-content-2').innerText = tickerString;
+        // Loop Ticker Content
+        const tickerStr = predictions.slice(-15).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ') + "  •  ";
+        document.getElementById('ticker-content').innerText = tickerStr;
+        document.getElementById('ticker-content-2').innerText = tickerStr;
 
-        // ... [Rest of data processing] ...
-        
+        // ... process other data ...
         setupSearch(); 
-    } catch (e) { console.error("System Malfunction:", e); }
+    } catch (e) { console.error("Data Load Error", e); }
 }
 
 function setupSearch() {
@@ -45,23 +46,25 @@ function setupSearch() {
     
     const input = document.querySelector('.leaflet-geosearch-bar form input');
     input.addEventListener('input', (e) => {
-        const q = clean(e.target.value);
-        if (q.length < 2) { geoLayer.eachLayer(l => geoLayer.resetStyle(l)); return; }
+        const query = clean(e.target.value);
+        if (query.length < 2) { geoLayer.eachLayer(l => geoLayer.resetStyle(l)); return; }
         
         geoLayer.eachLayer(l => {
-            const name = clean(l.feature.properties.name);
-            // DEEP SEARCH: Checks name OR any field in the prediction row
-            const deepMatch = predictions.some(p => p.cleanRow.includes(q) && (p.cleanRow.includes(name) || name.includes(clean(p.country))));
-            
-            if (name.includes(q) || deepMatch) {
-                l.setStyle({fillOpacity: 0.4, fillColor: '#facc15', color: '#facc15', weight: 2});
+            const cName = clean(l.feature.properties.name);
+            // DEEP SEARCH: Checks if query is in the country name OR anywhere in its prediction row (Date, Author, Title, Desc)
+            const hasDeepMatch = predictions.some(p => 
+                p.cleanRow.includes(query) && 
+                (p.cleanRow.includes(cName) || cName.includes(clean(p.country)))
+            );
+
+            if (cName.includes(query) || hasDeepMatch) {
+                l.setStyle({fillOpacity: 0.5, fillColor: '#facc15', color: '#facc15', weight: 3});
             } else {
                 l.setStyle({fillOpacity: 0, color: "rgba(255,255,255,0.1)", weight: 1});
             }
         });
     });
 }
-
 async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
     const d = worldData[iso], rawClean = clean(name);
