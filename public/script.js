@@ -1,5 +1,4 @@
 let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
-const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
 // 1. HELPER: Advanced Clean & Translation Ledger
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
@@ -17,7 +16,12 @@ const countryAliases = {
 };
 
 function initMap() {
-    // Define the world corners [South-West, North-East]
+    // PREVENT "Already Initialized" Error
+    if (map !== undefined && map !== null) { 
+        console.log("Map already initialized. Skipping...");
+        return; 
+    }
+
     const southWest = L.latLng(-85, -180);
     const northEast = L.latLng(85, 180);
     const bounds = L.latLngBounds(southWest, northEast);
@@ -25,13 +29,13 @@ function initMap() {
     map = L.map('map', { 
         zoomSnap: 0.1, 
         attributionControl: false,
-        maxBounds: bounds,         // Prevents scrolling past the world edges
-        maxBoundsViscosity: 1.0    // Makes the edges feel "solid"
+        maxBounds: bounds,         
+        maxBoundsViscosity: 1.0    
     }).setView([20, 0], 2.2);
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
-        noWrap: true,              // Tells the tile layer not to repeat
-        bounds: bounds             // Clips the tiles to our boundaries
+        noWrap: true,              
+        bounds: bounds             
     }).addTo(map);
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { 
@@ -42,6 +46,7 @@ function initMap() {
 
     loadGlobalData();
 }
+
 async function loadGlobalData() {
     try {
         const [pRes, lRes, gRes, cRes] = await Promise.all([
@@ -57,7 +62,6 @@ async function loadGlobalData() {
             return { author: v[1], title: v[2], date: v[3], country: v[5], meta: v[6], from: v[7], to: v[8], desc: v[9], cleanRow: clean(line) };
         });
 
-        // Set Ticker to latest 5 predictions
         const tickerContent = predictions.slice(-5).map(p => `${p.country.toUpperCase()}: ${p.title.replace(/"/g,'')}`).join('  |  ');
         document.getElementById('ticker-scroll').innerText = `LIVE INTEL: ${tickerContent} ... WORLD BANK BRIDGE ONLINE ...`;
 
@@ -106,8 +110,6 @@ async function updateUI(name, iso) {
     
     const d = worldData[iso];
     const rawCleanName = clean(name);
-    
-    // Check Alias Ledger first, then fall back to cleaned name
     const lookupKey = countryAliases[rawCleanName] || rawCleanName;
     const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawCleanName));
     
@@ -119,7 +121,22 @@ async function updateUI(name, iso) {
     document.getElementById('card-leader').innerText = leaderName;
     
     document.getElementById('card-flag').src = d?.flags?.png || "";
-    // ... rest of your existing function
+    
+    fetchEconomicData(iso);
+    document.getElementById('hover-card').style.display = 'block';
+
+    const panel = document.getElementById('intel-panel');
+    if (matches.length > 0) {
+        panel.style.display = 'flex';
+        document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
+        document.getElementById('intel-body').innerHTML = matches.map(p => `
+            <div class="prediction-card">
+                <div class="pred-meta">${p.author} • ${p.date}</div>
+                <div class="pred-title">${p.title.replace(/"/g,'')}</div>
+                <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
+            </div>
+        `).join('');
+    } else { panel.style.display = 'none'; }
 }
 
 async function fetchEconomicData(iso) {
@@ -145,4 +162,6 @@ async function fetchEconomicData(iso) {
 function lockUI(n, i) { isLocked = true; updateUI(n, i); }
 function closeUI() { isLocked = false; hideUI(); }
 function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
+
+// START
 initMap();
