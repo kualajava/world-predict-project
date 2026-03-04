@@ -107,3 +107,22 @@ body, html {
     background: #1e293b !important;
     color: var(--accent) !important;
 }
+
+/* Enhanced Tactical Search Bar */
+.leaflet-geosearch-bar {
+    background: var(--glass) !important;
+    border: 1px solid var(--accent) !important; /* Yellow border to show it's active */
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.2);
+}
+
+.leaflet-geosearch-bar form input::placeholder {
+    color: rgba(248, 250, 252, 0.5);
+    font-style: italic;
+}
+
+/* Ensure results list is readable */
+.leaflet-geosearch-bar .results.active {
+    padding: 0;
+    background: #0f172a !important;
+    border: 1px solid #334155;
+}
