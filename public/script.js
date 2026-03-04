@@ -15,7 +15,7 @@ const countryAliases = {
 };
 
 function initMap() {
-    if (map !== undefined && map !== null) return;
+    if (map) return;
 
     const bounds = L.latLngBounds(L.latLng(-85, -200), L.latLng(85, 200));
 
@@ -52,11 +52,11 @@ async function loadGlobalData() {
         const pTxt = await pRes.text();
         predictions = pTxt.split('\n').slice(1).filter(l => l.trim()).map(line => {
             const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            return { author: v[1], title: v[2], date: v[3], country: v[5], meta: v[6], from: v[7], to: v[8], desc: v[9], cleanRow: clean(line) };
+            return { author: v[1], title: v[2], country: v[5], desc: v[9], cleanRow: clean(line) };
         });
 
-        const tickerContent = predictions.slice(-5).map(p => `${p.country.toUpperCase()}: ${p.title.replace(/"/g,'')}`).join('  |  ');
-        document.getElementById('ticker-scroll').innerText = `LIVE INTEL: ${tickerContent} ... WORLD BANK BRIDGE ONLINE ...`;
+        const tickerText = predictions.slice(-8).map(p => `${p.country.toUpperCase()}: ${p.title.replace(/"/g,'')}`).join('  |  ');
+        document.getElementById('ticker-content').innerText = `LIVE INTEL: ${tickerText} --- BRIDGE SECURE --- `;
 
         const lTxt = await lRes.text();
         lTxt.split('\n').slice(1).forEach(row => {
@@ -82,98 +82,51 @@ async function loadGlobalData() {
         
         drawHeatIcons();
         addSearchBar(); 
-    } catch (e) { console.error("Load Error", e); }
+    } catch (e) { console.error("Global Load Failure", e); }
 }
-
-// ... existing variables ...
 
 function addSearchBar() {
     if (!window.GeoSearch) {
         setTimeout(addSearchBar, 200);
         return;
     }
-
     const provider = new window.GeoSearch.OpenStreetMapProvider();
     const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: provider,
         style: 'bar',
         position: 'topright',
-        showMarker: false, // We'll handle highlighting ourselves
+        showMarker: false,
         autoClose: true,
-        searchLabel: 'Search Location or Intel Keywords...'
+        searchLabel: 'Location or Intel Keywords...'
     });
-
     map.addControl(searchControl);
 
-    // DUAL-LOGIC LISTENERS
     const searchInput = document.querySelector('.leaflet-geosearch-bar form input');
-    
-    // Listener for when a user presses "Enter"
     searchInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            const query = searchInput.value;
-            searchLocalIntel(query);
-        }
-    });
-
-    // Listener for selecting a specific map location from the dropdown
-    map.on('geosearch/showlocation', (result) => {
-        // If they chose a location, also search intel for that location name
-        searchLocalIntel(result.location.label);
+        if (e.key === 'Enter') searchLocalIntel(searchInput.value);
     });
 }
 
 function searchLocalIntel(query) {
     const q = clean(query);
     if (!q) return;
-
-    let matchFound = false;
-    const matchedCountries = new Set();
-
-    // 1. Scan predictions for the keyword
-    predictions.forEach(p => {
-        if (p.cleanRow.includes(q)) {
-            matchedCountries.add(clean(p.country));
-            matchFound = true;
-        }
-    });
-
-    // 2. Highlight matching countries on the map
     geoLayer.eachLayer(layer => {
-        const countryName = clean(layer.feature.properties.name);
-        const iso = layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3;
-        
-        // If the country matches the keyword or the specific location searched
-        if (matchedCountries.has(countryName) || q.includes(countryName)) {
-            layer.setStyle({
-                weight: 4,
-                color: 'var(--accent)',
-                fillOpacity: 0.3,
-                fillColor: 'var(--accent)'
-            });
-            
-            // Auto-open UI for the first match found
-            if (!matchFound) {
-                lockUI(layer.feature.properties.name, iso);
-                matchFound = true;
-            }
+        const name = clean(layer.feature.properties.name);
+        if (predictions.some(p => p.cleanRow.includes(q) && p.cleanRow.includes(name))) {
+            layer.setStyle({fillOpacity: 0.4, fillColor: '#facc15', color: '#facc15', weight: 3});
         } else {
-            // Reset others
             geoLayer.resetStyle(layer);
         }
     });
-
-    if (!matchFound) {
-        console.log("No intel matches for: " + query);
-    }
 }
+
 function drawHeatIcons() {
     geoLayer.eachLayer(layer => {
         const countryKey = clean(layer.feature.properties.name);
-        const matches = predictions.filter(p => p.cleanRow.includes(countryKey));
-        if (matches.length > 0) {
+        const count = predictions.filter(p => p.cleanRow.includes(countryKey)).length;
+        if (count > 0) {
             L.marker(layer.getBounds().getCenter(), { 
-                icon: L.divIcon({ className: 'heat-badge', html: matches.length, iconSize: [26, 26] }) 
+                icon: L.divIcon({ className: 'heat-badge', html: count, iconSize: [26, 26] }) 
             }).addTo(map).on('click', (e) => { 
                 L.DomEvent.stopPropagation(e); 
                 lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3); 
@@ -185,61 +138,43 @@ function drawHeatIcons() {
 async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
     const d = worldData[iso];
-    const rawCleanName = clean(name);
-    const lookupKey = countryAliases[rawCleanName] || rawCleanName;
+    const rawClean = clean(name);
+    const lookupKey = countryAliases[rawClean] || rawClean;
     
-    // NEW FUZZY LOOKUP
-    const leaderName = leaderData[lookupKey] || 
-                       leaderData[rawCleanName] || 
-                       Object.keys(leaderData).find(k => rawCleanName.includes(k) || k.includes(rawCleanName)) || 
-                       "Intel Update Pending";
+    const leader = leaderData[lookupKey] || 
+                   leaderData[rawClean] || 
+                   Object.keys(leaderData).find(k => rawClean.includes(k) || k.includes(rawClean)) || 
+                   "Update Pending";
 
-    document.getElementById('card-leader').innerText = leaderName;
     document.getElementById('card-name').innerText = name;
+    document.getElementById('card-leader').innerText = leader;
     document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
     document.getElementById('card-flag').src = d?.flags?.png || "";
-    
-    if (d?.currencies) {
-        document.getElementById('card-cur').innerText = Object.keys(d.currencies)[0];
-    }
+    if (d?.currencies) document.getElementById('card-cur').innerText = Object.keys(d.currencies)[0];
 
     fetchEconomicData(iso);
     document.getElementById('hover-card').style.display = 'block';
 
     const panel = document.getElementById('intel-panel');
-    const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawCleanName));
-    
+    const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawClean));
     if (matches.length > 0) {
         panel.style.display = 'flex';
         document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
         document.getElementById('intel-body').innerHTML = matches.map(p => `
             <div class="prediction-card">
-                <div class="pred-meta">${p.author} • ${p.date}</div>
                 <div class="pred-title">${p.title.replace(/"/g,'')}</div>
                 <div class="pred-desc">${p.desc.replace(/"/g,'')}</div>
-            </div>
-        `).join('');
+            </div>`).join('');
     } else { panel.style.display = 'none'; }
-} // <--- ENSURE THIS BRACE IS PRESENT
+}
 
 async function fetchEconomicData(iso) {
-    const gdpEl = document.getElementById('card-gdp');
-    const infEl = document.getElementById('card-inf');
-    gdpEl.innerText = "..."; infEl.innerText = "...";
     try {
-        const response = await fetch(`/api/economics/${iso}`);
-        const data = await response.json();
-        let gdp = "GAP", inf = "GAP";
-        if (data.gdp?.length) {
-            const latest = data.gdp.find(i => i.value !== null);
-            if (latest) gdp = "$" + (latest.value / 1e12).toFixed(2) + "T";
-        }
-        if (data.inflation?.length) {
-            const latest = data.inflation.find(i => i.value !== null);
-            if (latest) inf = latest.value.toFixed(1) + "%";
-        }
-        gdpEl.innerText = gdp; infEl.innerText = inf;
-    } catch (e) { gdpEl.innerText = "ERR"; }
+        const res = await fetch(`/api/economics/${iso}`);
+        const data = await res.json();
+        document.getElementById('card-gdp').innerText = data.gdp?.length ? "$" + (data.gdp.find(v => v.value)?.value / 1e12).toFixed(2) + "T" : "GAP";
+        document.getElementById('card-inf').innerText = data.inflation?.length ? data.inflation.find(v => v.value)?.value.toFixed(1) + "%" : "GAP";
+    } catch (e) { document.getElementById('card-gdp').innerText = "ERR"; }
 }
 
 function lockUI(n, i) { isLocked = true; updateUI(n, i); }
