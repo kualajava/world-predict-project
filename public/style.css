@@ -68,9 +68,42 @@ body, html {
 }
 
 /* SEARCH & ZOOM ADJUSTMENTS */
-.leaflet-top.leaflet-right { top: 45px !important; margin-right: 15px; }
-.leaflet-bottom.leaflet-right { bottom: 25px !important; margin-right: 15px; }
+/* Fix Search Bar Position & Dark Mode Styling */
+.leaflet-top.leaflet-right {
+    top: 45px !important; /* Pushes it exactly below the black ticker */
+    margin-right: 20px;
+}
 
-.leaflet-geosearch-bar { background: #1e293b !important; border: 1px solid #334155 !important; }
-.leaflet-geosearch-bar form input { color: white !important; background: transparent !important; }
-.leaflet-geosearch-bar .results { background: #0f172a !important; color: white !important; border: 1px solid #334155 !important; }
+/* The Search Bar Container */
+.leaflet-geosearch-bar {
+    background: var(--glass) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid #334155 !important;
+    border-radius: 6px !important;
+    width: 280px !important; /* Matches the width of your Hover Card */
+}
+
+/* The Input Text */
+.leaflet-geosearch-bar form input {
+    color: var(--text) !important;
+    background: transparent !important;
+    font-size: 13px !important;
+    height: 35px !important;
+}
+
+/* The Results Dropdown */
+.leaflet-geosearch-bar .results {
+    background: var(--panel-bg) !important;
+    border: 1px solid #334155 !important;
+    color: var(--text) !important;
+}
+
+.leaflet-geosearch-bar .results > * {
+    border-bottom: 1px solid #1e293b !important;
+    padding: 8px !important;
+}
+
+.leaflet-geosearch-bar .results > *:hover {
+    background: #1e293b !important;
+    color: var(--accent) !important;
+}
