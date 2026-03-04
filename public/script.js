@@ -15,6 +15,8 @@ const countryAliases = {
     "republicoffrance": "france"
 };
 
+// ... existing clean function and aliases ...
+
 function initMap() {
     // PREVENT "Already Initialized" Error
     if (map !== undefined && map !== null) { 
@@ -22,16 +24,17 @@ function initMap() {
         return; 
     }
 
-    const southWest = L.latLng(-85, -180);
-    const northEast = L.latLng(85, 180);
+    // 1. Define bounds to roughly clip the world, but not too tightly
+    const southWest = L.latLng(-85, -200); // Expanded slightly west
+    const northEast = L.latLng(85, 200);  // Expanded slightly east
     const bounds = L.latLngBounds(southWest, northEast);
 
     map = L.map('map', { 
         zoomSnap: 0.1, 
         attributionControl: false,
         maxBounds: bounds,         
-        maxBoundsViscosity: 1.0    
-    }).setView([20, 0], 2.2);
+        maxBoundsViscosity: 0.5    // THE FIX: Soften the hard stop
+    }).setView([20, 0], 3.0); // THE FIX: Default zoom is now 3.0 (Tighter in)
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
         noWrap: true,              
@@ -46,6 +49,8 @@ function initMap() {
 
     loadGlobalData();
 }
+
+// ... rest of the file ...
 
 async function loadGlobalData() {
     try {
