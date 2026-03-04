@@ -7,21 +7,6 @@ const countryAliases = {
     "peoplesrepublicofchina": "china", "republicofindia": "india", "unitedkingdom": "uk"
 };
 
-async function fetchEconomicData(iso) {
-    try {
-        const res = await fetch(`/api/economics/${iso}`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        document.getElementById('card-gdp').innerText = data.gdp?.length ? 
-            "$" + (data.gdp.find(v => v.value)?.value / 1e12).toFixed(2) + "T" : "GAP";
-        document.getElementById('card-inf').innerText = data.inflation?.length ? 
-            data.inflation.find(v => v.value)?.value.toFixed(1) + "%" : "GAP";
-    } catch (e) { 
-        document.getElementById('card-gdp').innerText = "GAP";
-        document.getElementById('card-inf').innerText = "GAP";
-    }
-}
-
 async function loadGlobalData() {
     try {
         const [pRes, lRes, gRes, cRes] = await Promise.all([
@@ -37,8 +22,10 @@ async function loadGlobalData() {
             return { title: (v[2]||'').replace(/"/g,''), country: v[5], desc: (v[9]||'').replace(/"/g,''), cleanRow: clean(line) };
         });
 
-        const tickerText = predictions.slice(-10).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ');
-        document.getElementById('ticker-content').innerText = `LIVE INTEL: ${tickerText} --- BRIDGE ONLINE --- `;
+        // Loopable Ticker Content
+        const tickerString = predictions.slice(-15).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ');
+        document.getElementById('ticker-content').innerText = tickerString + "  •  ";
+        document.getElementById('ticker-content-2').innerText = tickerString + "  •  ";
 
         const lTxt = await lRes.text();
         lTxt.split('\n').slice(1).forEach(row => {
@@ -62,29 +49,11 @@ async function loadGlobalData() {
         const cData = await cRes.json();
         cData.forEach(c => worldData[c.cca3] = c);
         
-        drawHeatIcons();
         setupSearch(); 
-    } catch (e) { console.error("System Failure:", e); }
-}
-
-function drawHeatIcons() {
-    geoLayer.eachLayer(layer => {
-        const countryKey = clean(layer.feature.properties.name);
-        const count = predictions.filter(p => p.cleanRow.includes(countryKey)).length;
-        if (count > 0) {
-            L.marker(layer.getBounds().getCenter(), { 
-                icon: L.divIcon({ className: 'heat-badge', html: count, iconSize: [24, 24] }) 
-            }).addTo(map).on('click', (e) => { 
-                L.DomEvent.stopPropagation(e); 
-                lockUI(layer.feature.properties.name, layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3); 
-            });
-        }
-    });
+    } catch (e) { console.error("Data Load Error", e); }
 }
 
 function setupSearch() {
-    if (!window.GeoSearch) return setTimeout(setupSearch, 200);
-    
     const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: new window.GeoSearch.OpenStreetMapProvider(),
         style: 'bar', showMarker: false, autoClose: true
@@ -92,33 +61,19 @@ function setupSearch() {
     map.addControl(searchControl);
     
     const input = document.querySelector('.leaflet-geosearch-bar form input');
-    
     input.addEventListener('input', (e) => {
-        const query = clean(e.target.value);
-        if (query.length < 2) { 
-            geoLayer.eachLayer(l => geoLayer.resetStyle(l)); 
-            return; 
-        }
+        const q = clean(e.target.value);
+        if (q.length < 2) { geoLayer.eachLayer(l => geoLayer.resetStyle(l)); return; }
         
         geoLayer.eachLayer(l => {
-            const countryName = clean(l.feature.properties.name);
+            const name = clean(l.feature.properties.name);
+            // Search all fields in the CSV row for this country
+            const deepMatch = predictions.some(p => p.cleanRow.includes(q) && (p.cleanRow.includes(name) || name.includes(clean(p.country))));
             
-            // DEEP SEARCH: Checks if query is in country name 
-            // OR if query exists anywhere in the predictions CSV for this country
-            const hasDeepIntelMatch = predictions.some(p => 
-                p.cleanRow.includes(query) && 
-                (p.cleanRow.includes(countryName) || countryName.includes(clean(p.country)))
-            );
-
-            if (countryName.includes(query) || hasDeepIntelMatch) {
-                l.setStyle({
-                    fillOpacity: 0.5, 
-                    fillColor: '#facc15', 
-                    color: '#facc15', 
-                    weight: 3
-                });
+            if (name.includes(q) || deepMatch) {
+                l.setStyle({fillOpacity: 0.4, fillColor: '#facc15', color: '#facc15'});
             } else {
-                l.setStyle({fillOpacity: 0, color: "rgba(255,255,255,0.1)", weight: 1});
+                l.setStyle({fillOpacity: 0, color: "rgba(255,255,255,0.1)"});
             }
         });
     });
@@ -128,15 +83,13 @@ async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
     const d = worldData[iso], rawClean = clean(name);
     const lookupKey = countryAliases[rawClean] || rawClean;
-    const leader = leaderData[lookupKey] || leaderData[rawClean] || "Establishing Intel...";
+    const leader = leaderData[lookupKey] || leaderData[rawClean] || "Pending...";
 
     document.getElementById('card-name').innerText = name;
     document.getElementById('card-leader').innerText = leader;
     document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
     document.getElementById('card-flag').src = d?.flags?.png || "";
     if (d?.currencies) document.getElementById('card-cur').innerText = Object.keys(d.currencies)[0];
-
-    fetchEconomicData(iso);
 
     const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawClean));
     const panel = document.getElementById('intel-panel');
@@ -149,6 +102,7 @@ async function updateUI(name, iso) {
                 <div class="pred-desc">${p.desc}</div>
             </div>`).join('');
     } else panel.style.display = 'none';
+
     document.getElementById('hover-card').style.display = 'block';
 }
 
@@ -156,11 +110,8 @@ function lockUI(n, i) { isLocked = true; updateUI(n, i); }
 function closeUI() { isLocked = false; hideUI(); geoLayer.eachLayer(l => geoLayer.resetStyle(l)); }
 function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
 
-// BOOTSTRAP
 document.addEventListener('DOMContentLoaded', () => {
-    const bounds = L.latLngBounds(L.latLng(-85, -200), L.latLng(85, 200));
-    map = L.map('map', { zoomSnap: 0.1, attributionControl: false, zoomControl: false, maxBounds: bounds, maxBoundsViscosity: 0.5 }).setView([20, 0], 3);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    map = L.map('map', { zoomSnap: 0.1, attributionControl: false, zoomControl: false }).setView([20, 0], 3);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { noWrap: true }).addTo(map);
     loadGlobalData();
 });
