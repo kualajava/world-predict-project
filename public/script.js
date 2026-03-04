@@ -2,13 +2,31 @@ let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderDat
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
 function initMap() {
-    if (map) return;
-    map = L.map('map', { zoomSnap: 0.1, attributionControl: false }).setView([20, 0], 2.2);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { opacity: 0.4 }).addTo(map);
+    // Define the world corners [South-West, North-East]
+    const southWest = L.latLng(-85, -180);
+    const northEast = L.latLng(85, 180);
+    const bounds = L.latLngBounds(southWest, northEast);
+
+    map = L.map('map', { 
+        zoomSnap: 0.1, 
+        attributionControl: false,
+        maxBounds: bounds,         // Prevents scrolling past the world edges
+        maxBoundsViscosity: 1.0    // Makes the edges feel "solid"
+    }).setView([20, 0], 2.2);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
+        noWrap: true,              // Tells the tile layer not to repeat
+        bounds: bounds             // Clips the tiles to our boundaries
+    }).addTo(map);
+
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { 
+        opacity: 0.4,
+        noWrap: true,
+        bounds: bounds
+    }).addTo(map);
+
     loadGlobalData();
 }
-
 async function loadGlobalData() {
     try {
         const [pRes, lRes, gRes, cRes] = await Promise.all([
