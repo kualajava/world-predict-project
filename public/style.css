@@ -1,17 +1,4 @@
-:root { 
-    --panel-bg: #0f172a; --accent: #facc15; --text: #f8fafc; --danger: #ef4444; 
-    --glass: rgba(15, 23, 42, 0.95);
-}
-
-body, html { 
-    margin: 0; padding: 0; height: 100%; width: 100%; 
-    background: #020617; font-family: 'Segoe UI', Roboto, sans-serif; 
-    overflow: hidden; color: var(--text);
-}
-
-#map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-
-/* TICKER FIX: Stable Speed */
+/* TICKER STABILIZATION */
 #ticker-wrap { 
     position: fixed; top: 0; width: 100%; height: 32px; 
     background: #000; z-index: 3000; display: flex; 
@@ -19,57 +6,38 @@ body, html {
 }
 #ticker-label { background: var(--accent); color: #000; padding: 0 15px; line-height: 32px; font-weight: 900; font-size: 11px; z-index: 3001; }
 #ticker-scroll { 
-    white-space: nowrap; line-height: 32px; color: var(--accent);
-    display: inline-block;
-    animation: ticker-move 100s linear infinite;
-    font-family: 'Courier New', monospace; font-weight: bold;
+    display: inline-block; white-space: nowrap; line-height: 32px;
+    animation: ticker-loop 40s linear infinite; /* Adjusted speed for immediate start */
 }
-@keyframes ticker-move {
+@keyframes ticker-loop {
     0% { transform: translateX(100vw); }
     100% { transform: translateX(-100%); }
 }
 
-/* SEARCH BAR: Centered at Bottom */
-.leaflet-control-geosearch {
-    position: fixed !important;
-    bottom: 25px !important; /* Level with minus button */
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    margin: 0 !important;
-    z-index: 5000 !important;
-}
-
-.leaflet-geosearch-bar {
-    background: var(--glass) !important;
-    border: 1px solid var(--accent) !important;
-    width: 400px !important;
-    border-radius: 4px !important;
-}
-
-/* ZOOM POSITION */
-.leaflet-control-zoom { margin-bottom: 20px !important; margin-right: 20px !important; }
-
-/* PANELS */
+/* INTEL PANEL CLEANUP */
 #intel-panel { 
-    position: fixed; top: 85px; left: 20px; width: 450px; height: 80vh; 
+    position: fixed; top: 85px; left: 20px; width: 450px; height: 75vh; 
     background: var(--glass); display: none; flex-direction: column; 
     z-index: 2000; border-left: 4px solid var(--accent); border-radius: 8px;
 }
+.intel-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+
+/* COMPACT HOVER CARD (Top Right X) */
 #hover-card { 
     position: fixed; top: 85px; right: 20px; width: 280px; 
-    background: #1e293b; color: white; border-radius: 8px; padding: 15px; display: none; z-index: 1999;
+    background: #1e293b; color: white; border-radius: 8px; display: none; z-index: 1999;
+    padding: 0; overflow: hidden; /* Header will provide padding */
 }
-.stat-row { display: flex; justify-content: space-between; border-top: 1px solid #334155; padding: 8px 0; font-size: 12px; }
-.stat-val { font-weight: bold; color: var(--accent); }
-
-/* PREDICTION CARD CLEANUP */
-.prediction-card { padding: 15px; border-bottom: 1px solid #334155; }
-.pred-title { color: var(--accent); font-weight: bold; font-size: 15px; margin-bottom: 8px; display: block; }
-.pred-desc { font-size: 13px; line-height: 1.5; color: #cbd5e1; }
-
-/* HEAT MAP ICONS */
-.heat-badge { 
-    background: var(--accent); color: black; border-radius: 50%; 
-    text-align: center; line-height: 24px; font-weight: 900; 
-    border: 2px solid #000; cursor: pointer; font-size: 12px;
+.card-header { 
+    padding: 10px 15px; background: rgba(0,0,0,0.2); 
+    display: flex; justify-content: space-between; align-items: center;
 }
+.card-body { padding: 15px; }
+
+/* SEARCH BAR: Centered Bottom */
+.leaflet-control-geosearch {
+    position: fixed !important; bottom: 22px !important;
+    left: 50% !important; transform: translateX(-50%) !important;
+    margin: 0 !important; z-index: 5000 !important;
+}
+.leaflet-geosearch-bar { background: var(--glass) !important; border: 1px solid var(--accent) !important; width: 400px !important; }
