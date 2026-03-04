@@ -1,65 +1,57 @@
-let map, geoLayer, isLocked = false, predictions = [], leaderData = {};
+let map, geoLayer, isLocked = false, predictions = [], leaders = {};
 
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
 function initMap() {
-    map = L.map('map', { zoomSnap: 0.1, attributionControl: false, zoomControl: true }).setView([20, 0], 3);
-    
-    // Physical Tile Layer
+    map = L.map('map', { zoomSnap: 0.1, attributionControl: false, zoomControl: false }).setView([20, 0], 3);
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}').addTo(map);
-
-    // MOVE ZOOM TO BOTTOM RIGHT
-    map.zoomControl.setPosition('bottomright');
-
-    loadGlobalData();
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    loadData();
 }
 
-async function loadGlobalData() {
+async function loadData() {
     try {
-        const [pRes, gRes, cRes] = await Promise.all([
+        const [pRes, gRes, cRes, lRes] = await Promise.all([
             fetch('/api/data/predictions.csv'),
             fetch('https://raw.githubusercontent.com/datasets/geo-boundaries-world-110m/master/countries.geojson'),
-            fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies')
+            fetch('https://restcountries.com/v3.1/all?fields=name,cca3,flags,population,currencies'),
+            fetch('/api/data/leaders.csv').then(r => r.text()).catch(() => "")
         ]);
-        
+
         const pTxt = await pRes.text();
         predictions = pTxt.split('\n').slice(1).filter(l => l.trim()).map(line => {
-            const v = line.split(/,(?=(?:(?:[^multiline]*"){2})*[^multiline]*$)/);
-            return { title: (v[2]||'').replace(/"/g,''), country: v[5], desc: (v[9]||'').replace(/"/g,''), cleanRow: clean(line) };
+            const v = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            return { title: (v[2]||'').replace(/"/g,''), country: v[5], desc: (v[9]||'').replace(/"/g,''), raw: clean(line) };
         });
 
-        // Ticker content
-        const tStr = predictions.slice(-15).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ') + "  •  ";
-        document.getElementById('ticker-content').innerText = tStr;
-        document.getElementById('ticker-content-2').innerText = tStr;
+        const tickerStr = predictions.slice(-10).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ') + "  •  ";
+        document.getElementById('ticker-content').innerText = tickerStr;
+        document.getElementById('ticker-content-2').innerText = tickerStr;
 
-        const countries = await gRes.json();
+        const geoData = await gRes.json();
         const restData = await cRes.json();
-        
-        // Heatmap Layer
-        geoLayer = L.geoJson(countries, {
-            style: { color: "rgba(255,255,255,0.1)", weight: 1, fillOpacity: 0 },
+
+        geoLayer = L.geoJson(geoData, {
+            style: (f) => ({
+                color: "rgba(255,255,255,0.1)", weight: 1, 
+                fillOpacity: predictions.some(p => clean(p.country) === clean(f.properties.name)) ? 0.3 : 0,
+                fillColor: '#facc15'
+            }),
             onEachFeature: (f, l) => {
                 const name = f.properties.name;
                 const d = restData.find(c => c.name.common === name || c.cca3 === f.id);
-                
-                // Colorize Heatmap if predictions exist
-                if (predictions.some(p => clean(p.country) === clean(name))) {
-                    l.setStyle({ fillOpacity: 0.2, fillColor: '#facc15' });
-                }
-
                 l.on({
-                    mouseover: () => { if(!isLocked) updateUI(name, d, f.id); },
-                    click: () => { isLocked = true; updateUI(name, d, f.id); }
+                    mouseover: () => { if(!isLocked) updateUI(name, d); },
+                    click: (e) => { isLocked = true; updateUI(name, d); L.DomEvent.stopPropagation(e); }
                 });
             }
         }).addTo(map);
 
         setupSearch();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Critical System Failure", e); }
 }
 
-function updateUI(name, d, iso) {
+function updateUI(name, d) {
     document.getElementById('card-name').innerText = name;
     document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "--";
     document.getElementById('card-flag').src = d?.flags?.png || "";
@@ -71,24 +63,22 @@ function updateUI(name, d, iso) {
         panel.style.display = 'flex';
         document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
         document.getElementById('intel-body').innerHTML = matches.map(p => `
-            <div class="prediction-card">
-                <span class="pred-title">${p.title}</span>
-                <div class="pred-desc">${p.desc}</div>
+            <div style="padding:10px; border-bottom:1px solid #334155;">
+                <b style="color:var(--accent); display:block;">${p.title}</b>
+                <small style="color:#94a3b8;">${p.desc}</small>
             </div>`).join('');
     } else { panel.style.display = 'none'; }
-    
     document.getElementById('hover-card').style.display = 'block';
 }
 
 function setupSearch() {
-    const provider = new window.GeoSearch.OpenStreetMapProvider();
-    const searchControl = new window.GeoSearch.GeoSearchControl({
-        provider: provider,
+    const search = new window.GeoSearch.GeoSearchControl({
+        provider: new window.GeoSearch.OpenStreetMapProvider(),
         style: 'bar',
-        container: document.getElementById('search-container'), // ATTACH TO OUR DIV
+        container: document.getElementById('search-anchor'),
         showMarker: false
     });
-    map.addControl(searchControl);
+    map.addControl(search);
 }
 
 function closeUI() {
