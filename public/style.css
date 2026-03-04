@@ -1,38 +1,20 @@
-/* TICKER STABILIZATION */
-#ticker-wrap { 
-    position: fixed; top: 0; width: 100%; height: 32px; 
-    background: #000; z-index: 3000; display: flex; 
-    border-bottom: 1px solid #1e293b; overflow: hidden;
+:root { 
+    --panel-bg: #0f172a; --accent: #facc15; --text: #f8fafc; --danger: #ef4444; 
+    --glass: rgba(15, 23, 42, 0.95);
 }
+
+body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #020617; font-family: sans-serif; overflow: hidden; color: var(--text); }
+#map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
+
+/* TICKER FIX: Starts at 0 instead of 100vw to prevent empty screen on load */
+#ticker-wrap { position: fixed; top: 0; width: 100%; height: 32px; background: #000; z-index: 3000; display: flex; border-bottom: 1px solid #1e293b; overflow: hidden; }
 #ticker-label { background: var(--accent); color: #000; padding: 0 15px; line-height: 32px; font-weight: 900; font-size: 11px; z-index: 3001; }
-#ticker-scroll { 
-    display: inline-block; white-space: nowrap; line-height: 32px;
-    animation: ticker-loop 40s linear infinite; /* Adjusted speed for immediate start */
-}
+#ticker-scroll { display: inline-block; white-space: nowrap; line-height: 32px; color: var(--accent); animation: ticker-loop 60s linear infinite; padding-left: 20px; }
+
 @keyframes ticker-loop {
-    0% { transform: translateX(100vw); }
+    0% { transform: translateX(0); }
     100% { transform: translateX(-100%); }
 }
-
-/* INTEL PANEL CLEANUP */
-#intel-panel { 
-    position: fixed; top: 85px; left: 20px; width: 450px; height: 75vh; 
-    background: var(--glass); display: none; flex-direction: column; 
-    z-index: 2000; border-left: 4px solid var(--accent); border-radius: 8px;
-}
-.intel-header { padding: 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
-
-/* COMPACT HOVER CARD (Top Right X) */
-#hover-card { 
-    position: fixed; top: 85px; right: 20px; width: 280px; 
-    background: #1e293b; color: white; border-radius: 8px; display: none; z-index: 1999;
-    padding: 0; overflow: hidden; /* Header will provide padding */
-}
-.card-header { 
-    padding: 10px 15px; background: rgba(0,0,0,0.2); 
-    display: flex; justify-content: space-between; align-items: center;
-}
-.card-body { padding: 15px; }
 
 /* SEARCH BAR: Centered Bottom */
 .leaflet-control-geosearch {
@@ -41,3 +23,16 @@
     margin: 0 !important; z-index: 5000 !important;
 }
 .leaflet-geosearch-bar { background: var(--glass) !important; border: 1px solid var(--accent) !important; width: 400px !important; }
+
+/* UI PANELS */
+#intel-panel { position: fixed; top: 85px; left: 20px; width: 420px; height: 75vh; background: var(--glass); display: none; flex-direction: column; z-index: 2000; border-left: 4px solid var(--accent); border-radius: 8px; }
+#hover-card { position: fixed; top: 85px; right: 20px; width: 260px; background: #1e293b; color: white; border-radius: 8px; display: none; z-index: 1999; overflow: hidden; border: 1px solid #334155; }
+
+.card-header { padding: 8px 12px; background: rgba(0,0,0,0.3); display: flex; justify-content: space-between; align-items: center; }
+.card-body { padding: 12px; }
+.stat-row { display: flex; justify-content: space-between; border-top: 1px solid #334155; padding: 6px 0; font-size: 12px; }
+.stat-val { font-weight: bold; color: var(--accent); }
+.prediction-card { padding: 12px; border-bottom: 1px solid #334155; }
+.pred-title { color: var(--accent); font-weight: bold; display: block; }
+.pred-desc { font-size: 13px; color: #cbd5e1; }
+.heat-badge { background: var(--accent); color: black; border-radius: 50%; text-align: center; line-height: 24px; font-weight: 900; border: 2px solid #000; font-size: 11px; }
