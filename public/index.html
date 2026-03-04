@@ -2,19 +2,23 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Global Atlas | v2.6.3 PROD</title>
+    <title>Global Atlas | v2.6.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.css" />
     <script src="https://unpkg.com/leaflet-geosearch@latest/dist/bundle.min.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=264">
+    <link rel="stylesheet" href="style.css?v=265">
+</head>
 <body>
 
 <div id="ticker-wrap">
     <div id="ticker-label">WORLD FEED</div>
-    <div id="ticker-scroll">CONNECTING TO GLOBAL INTEL STREAM...</div>
+    <div id="ticker-scroll">
+        <span id="ticker-content">CONNECTING TO GLOBAL INTEL STREAM...</span>
+        <span id="ticker-spacer"></span>
+    </div>
 </div>
 
 <div id="map"></div>
@@ -42,6 +46,6 @@
     </div>
 </div>
 
-<script src="script.js?v=264"></script></head>
+<script src="script.js?v=265"></script>
 </body>
 </html>
