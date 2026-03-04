@@ -1,20 +1,7 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Global Atlas | Tactical v2.7</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-geosearch@latest/dist/geosearch.css" />
-    <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-geosearch@latest/dist/bundle.min.js"></script>
-</head>
-<body>
-
 <div id="ticker-wrap">
     <div id="ticker-label">WORLD FEED</div>
     <div id="ticker-scroll">
-        <span id="ticker-content">CONNECTING TO GLOBAL INTEL STREAM...</span>
+        <span id="ticker-content">INITIALIZING...</span>
         <span id="ticker-content-2"></span> 
     </div>
 </div>
@@ -27,18 +14,18 @@
         <b id="intel-title">INTEL</b>
         <button onclick="closeUI()" class="close-x">✕</button>
     </div>
-    <div id="intel-body" style="flex:1; overflow-y:auto; padding:10px;"></div>
+    <div id="intel-body" style="overflow-y:auto;"></div>
 </div>
 
 <div id="hover-card">
     <div class="panel-header">
-        <b style="font-size: 10px; color: var(--accent); letter-spacing: 1px;">DATA PROFILE</b>
+        <b style="font-size: 10px; color: var(--accent);">DATA PROFILE</b>
         <button onclick="closeUI()" class="close-x">✕</button>
     </div>
     <div id="card-content" class="card-body">
-        <div style="display:flex; align-items:center; gap:10px; margin: 12px;">
-            <img src="" id="card-flag" style="width:30px; border:1px solid #334155;">
-            <b id="card-name" style="font-size:16px; color:var(--accent);"></b>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <img src="" id="card-flag" style="width:30px;">
+            <b id="card-name" style="color:var(--accent);"></b>
         </div>
         <div class="stat-row"><span>Leader</span><span class="stat-val" id="card-leader">--</span></div>
         <div class="stat-row"><span>Population</span><span class="stat-val" id="card-pop">--</span></div>
@@ -46,7 +33,3 @@
         <div class="stat-row"><span>Inflation</span><span class="stat-val" id="card-inf">--</span></div>
     </div>
 </div>
-
-<script src="script.js"></script>
-</body>
-</html>
