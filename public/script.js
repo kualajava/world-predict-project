@@ -86,19 +86,25 @@ async function loadGlobalData() {
 }
 
 function addSearchBar() {
+    // Safety check: wait for the library to be fully ready
     if (!window.GeoSearch) {
         setTimeout(addSearchBar, 200);
         return;
     }
+
     const provider = new window.GeoSearch.OpenStreetMapProvider();
+
     const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: provider,
-        style: 'bar',
-        position: 'topright',
+        style: 'bar',                // Full bar is easier to click than just an icon
+        position: 'topright',        // Moved to the right side
         showMarker: true,
+        retainZoomLevel: false,
+        animateZoom: true,
         autoClose: true,
-        searchLabel: 'Search destination...'
+        searchLabel: 'Enter country or city...'
     });
+
     map.addControl(searchControl);
 }
 
