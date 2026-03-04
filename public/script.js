@@ -1,3 +1,12 @@
+let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
+
+const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
+
+const countryAliases = {
+    "unitedstates": "usa", "unitedstatesofamerica": "usa", "russianfederation": "russia",
+    "peoplesrepublicofchina": "china", "republicofindia": "india", "unitedkingdom": "uk"
+};
+
 // ... [Keep existing variables and clean() function] ...
 
 async function loadGlobalData() {
@@ -52,3 +61,40 @@ function setupSearch() {
         });
     });
 }
+
+async function updateUI(name, iso) {
+    if (!iso || iso === "-99") return;
+    const d = worldData[iso], rawClean = clean(name);
+    const lookupKey = countryAliases[rawClean] || rawClean;
+    const leader = leaderData[lookupKey] || leaderData[rawClean] || "Pending...";
+
+    document.getElementById('card-name').innerText = name;
+    document.getElementById('card-leader').innerText = leader;
+    document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
+    document.getElementById('card-flag').src = d?.flags?.png || "";
+    if (d?.currencies) document.getElementById('card-cur').innerText = Object.keys(d.currencies)[0];
+
+    const matches = predictions.filter(p => p.cleanRow.includes(lookupKey) || p.cleanRow.includes(rawClean));
+    const panel = document.getElementById('intel-panel');
+    if (matches.length > 0) {
+        panel.style.display = 'flex';
+        document.getElementById('intel-title').innerText = name.toUpperCase() + " INTEL";
+        document.getElementById('intel-body').innerHTML = matches.map(p => `
+            <div class="prediction-card">
+                <span class="pred-title">${p.title}</span>
+                <div class="pred-desc">${p.desc}</div>
+            </div>`).join('');
+    } else panel.style.display = 'none';
+
+    document.getElementById('hover-card').style.display = 'block';
+}
+
+function lockUI(n, i) { isLocked = true; updateUI(n, i); }
+function closeUI() { isLocked = false; hideUI(); geoLayer.eachLayer(l => geoLayer.resetStyle(l)); }
+function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
+
+document.addEventListener('DOMContentLoaded', () => {
+    map = L.map('map', { zoomSnap: 0.1, attributionControl: false, zoomControl: false }).setView([20, 0], 3);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { noWrap: true }).addTo(map);
+    loadGlobalData();
+});
