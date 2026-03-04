@@ -168,5 +168,21 @@ function lockUI(n, i) { isLocked = true; updateUI(n, i); }
 function closeUI() { isLocked = false; hideUI(); }
 function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
 
+function addSearchBar() {
+    const provider = new window.GeoSearch.OpenStreetMapProvider();
+
+    const searchControl = new window.GeoSearch.GeoSearchControl({
+        provider: provider,
+        style: 'bar',                // 'bar' gives you the full search line
+        position: 'topright',        // Keep it top-right to avoid the Left Intel Panel
+        showMarker: true,            // Drops a marker on found location
+        retainZoomLevel: false,      // Zooms in to the city/country found
+        animateZoom: true,
+        autoClose: true,
+        searchLabel: 'Search for country or city...'
+    });
+
+    map.addControl(searchControl);
+}
 // START
 initMap();
