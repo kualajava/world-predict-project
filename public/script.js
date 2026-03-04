@@ -85,29 +85,88 @@ async function loadGlobalData() {
     } catch (e) { console.error("Load Error", e); }
 }
 
+// ... existing variables ...
+
 function addSearchBar() {
-    // Safety check: wait for the library to be fully ready
     if (!window.GeoSearch) {
         setTimeout(addSearchBar, 200);
         return;
     }
 
     const provider = new window.GeoSearch.OpenStreetMapProvider();
-
     const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: provider,
-        style: 'bar',                // Full bar is easier to click than just an icon
-        position: 'topright',        // Moved to the right side
-        showMarker: true,
-        retainZoomLevel: false,
-        animateZoom: true,
+        style: 'bar',
+        position: 'topright',
+        showMarker: false, // We'll handle highlighting ourselves
         autoClose: true,
-        searchLabel: 'Enter country or city...'
+        searchLabel: 'Search Location or Intel Keywords...'
     });
 
     map.addControl(searchControl);
+
+    // DUAL-LOGIC LISTENERS
+    const searchInput = document.querySelector('.leaflet-geosearch-bar form input');
+    
+    // Listener for when a user presses "Enter"
+    searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            const query = searchInput.value;
+            searchLocalIntel(query);
+        }
+    });
+
+    // Listener for selecting a specific map location from the dropdown
+    map.on('geosearch/showlocation', (result) => {
+        // If they chose a location, also search intel for that location name
+        searchLocalIntel(result.location.label);
+    });
 }
 
+function searchLocalIntel(query) {
+    const q = clean(query);
+    if (!q) return;
+
+    let matchFound = false;
+    const matchedCountries = new Set();
+
+    // 1. Scan predictions for the keyword
+    predictions.forEach(p => {
+        if (p.cleanRow.includes(q)) {
+            matchedCountries.add(clean(p.country));
+            matchFound = true;
+        }
+    });
+
+    // 2. Highlight matching countries on the map
+    geoLayer.eachLayer(layer => {
+        const countryName = clean(layer.feature.properties.name);
+        const iso = layer.feature.properties.iso_a3 || layer.feature.properties.ISO_A3;
+        
+        // If the country matches the keyword or the specific location searched
+        if (matchedCountries.has(countryName) || q.includes(countryName)) {
+            layer.setStyle({
+                weight: 4,
+                color: 'var(--accent)',
+                fillOpacity: 0.3,
+                fillColor: 'var(--accent)'
+            });
+            
+            // Auto-open UI for the first match found
+            if (!matchFound) {
+                lockUI(layer.feature.properties.name, iso);
+                matchFound = true;
+            }
+        } else {
+            // Reset others
+            geoLayer.resetStyle(layer);
+        }
+    });
+
+    if (!matchFound) {
+        console.log("No intel matches for: " + query);
+    }
+}
 function drawHeatIcons() {
     geoLayer.eachLayer(layer => {
         const countryKey = clean(layer.feature.properties.name);
