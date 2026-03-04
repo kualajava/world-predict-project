@@ -1,6 +1,5 @@
 let map, geoLayer, isLocked = false, predictions = [], worldData = {}, leaderData = {};
 
-// 1. HELPER: Advanced Clean & Translation Ledger
 const clean = (str) => str ? str.toLowerCase().replace(/[^a-z0-9]/g, '').trim() : '';
 
 const countryAliases = {
@@ -15,7 +14,6 @@ const countryAliases = {
     "republicoffrance": "france"
 };
 
-// ... existing clean function and aliases ...
 function initMap() {
     if (map !== undefined && map !== null) return;
 
@@ -24,12 +22,11 @@ function initMap() {
     map = L.map('map', { 
         zoomSnap: 0.1, 
         attributionControl: false,
-        zoomControl: false, // 1. Disable the default top-left buttons
+        zoomControl: false, 
         maxBounds: bounds,         
         maxBoundsViscosity: 0.5    
     }).setView([20, 0], 3.0);
 
-    // 2. Add new zoom buttons specifically in the bottom-right
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
@@ -40,10 +37,8 @@ function initMap() {
         opacity: 0.4, noWrap: true, bounds: bounds
     }).addTo(map);
 
-    addSearchBar(); // 3. Call the new search function
     loadGlobalData();
 }
-// ... rest of the file ...
 
 async function loadGlobalData() {
     try {
@@ -84,8 +79,27 @@ async function loadGlobalData() {
 
         const cData = await cRes.json();
         cData.forEach(c => worldData[c.cca3] = c);
+        
         drawHeatIcons();
+        addSearchBar(); 
     } catch (e) { console.error("Load Error", e); }
+}
+
+function addSearchBar() {
+    if (!window.GeoSearch) {
+        setTimeout(addSearchBar, 200);
+        return;
+    }
+    const provider = new window.GeoSearch.OpenStreetMapProvider();
+    const searchControl = new window.GeoSearch.GeoSearchControl({
+        provider: provider,
+        style: 'bar',
+        position: 'topright',
+        showMarker: true,
+        autoClose: true,
+        searchLabel: 'Search destination...'
+    });
+    map.addControl(searchControl);
 }
 
 function drawHeatIcons() {
@@ -105,7 +119,6 @@ function drawHeatIcons() {
 
 async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
-    
     const d = worldData[iso];
     const rawCleanName = clean(name);
     const lookupKey = countryAliases[rawCleanName] || rawCleanName;
@@ -113,13 +126,13 @@ async function updateUI(name, iso) {
     
     document.getElementById('card-name').innerText = name;
     document.getElementById('card-pop').innerText = d ? d.population.toLocaleString() : "N/A";
-    
-    // SMART LEADER LOOKUP
-    const leaderName = leaderData[lookupKey] || leaderData[rawCleanName] || "Intel Update Pending";
-    document.getElementById('card-leader').innerText = leaderName;
-    
+    document.getElementById('card-leader').innerText = leaderData[lookupKey] || leaderData[rawCleanName] || "Update Pending";
     document.getElementById('card-flag').src = d?.flags?.png || "";
     
+    if (d?.currencies) {
+        document.getElementById('card-cur').innerText = Object.keys(d.currencies)[0];
+    }
+
     fetchEconomicData(iso);
     document.getElementById('hover-card').style.display = 'block';
 
@@ -161,21 +174,4 @@ function lockUI(n, i) { isLocked = true; updateUI(n, i); }
 function closeUI() { isLocked = false; hideUI(); }
 function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
 
-function addSearchBar() {
-    const provider = new window.GeoSearch.OpenStreetMapProvider();
-
-    const searchControl = new window.GeoSearch.GeoSearchControl({
-        provider: provider,
-        style: 'bar',                // 'bar' gives you the full search line
-        position: 'topright',        // Keep it top-right to avoid the Left Intel Panel
-        showMarker: true,            // Drops a marker on found location
-        retainZoomLevel: false,      // Zooms in to the city/country found
-        animateZoom: true,
-        autoClose: true,
-        searchLabel: 'Search for country or city...'
-    });
-
-    map.addControl(searchControl);
-}
-// START
 initMap();
