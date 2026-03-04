@@ -29,20 +29,23 @@
 </div>
 
 <div id="hover-card">
-    <div id="card-content">
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
-            <img src="" id="card-flag" style="width:35px; border:1px solid #334155;">
-            <b id="card-name" style="font-size:18px; color:var(--accent);"></b>
+    <div class="card-header">
+        <b style="font-size: 12px; color: var(--accent); letter-spacing: 1px;">COUNTRY PROFILE</b>
+        <button onclick="closeUI()" style="background:none; color:white; border:none; cursor:pointer; font-size:16px;">✕</button>
+    </div>
+    <div id="card-content" class="card-body">
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <img src="" id="card-flag" style="width:30px; border:1px solid #334155;">
+            <b id="card-name" style="font-size:16px; color:var(--accent);"></b>
         </div>
         <div class="stat-row"><span class="stat-label">Currency</span><span class="stat-val" id="card-cur">--</span></div>
         <div class="stat-row"><span class="stat-label">Leader</span><span class="stat-val" id="card-leader">--</span></div>
         <div class="stat-row"><span class="stat-label">Population</span><span class="stat-val" id="card-pop">--</span></div>
         <div class="stat-row"><span class="stat-label">GDP (USD)</span><span class="stat-val" id="card-gdp">--</span></div>
         <div class="stat-row"><span class="stat-label">Inflation</span><span class="stat-val" id="card-inf">--</span></div>
-        <button onclick="closeUI()" style="width:100%; margin-top:15px; padding:8px; background:#334155; color:white; border:none; border-radius:4px; cursor:pointer;">Unlock Map</button>
     </div>
 </div>
-
+    
 <script src="script.js?v=267"></script>
 </body>
 </html>
