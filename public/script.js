@@ -7,9 +7,6 @@ const countryAliases = {
     "peoplesrepublicofchina": "china", "republicofindia": "india", "unitedkingdom": "uk"
 };
 
-/**
- * 1. LEADER DATA & ECONOMICS FALLBACKS
- */
 async function fetchEconomicData(iso) {
     try {
         const res = await fetch(`/api/economics/${iso}`);
@@ -25,38 +22,6 @@ async function fetchEconomicData(iso) {
     }
 }
 
-/**
- * 2. MAP INITIALIZATION
- */
-function initMap() {
-    if (map) return;
-
-    const bounds = L.latLngBounds(L.latLng(-85, -200), L.latLng(85, 200));
-
-    map = L.map('map', { 
-        zoomSnap: 0.1, 
-        attributionControl: false,
-        zoomControl: false, 
-        maxBounds: bounds,         
-        maxBoundsViscosity: 0.5    
-    }).setView([20, 0], 3.0);
-
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
-        noWrap: true, bounds: bounds             
-    }).addTo(map);
-
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { 
-        opacity: 0.4, noWrap: true, bounds: bounds
-    }).addTo(map);
-
-    loadGlobalData();
-}
-
-/**
- * 3. DATA LOADING
- */
 async function loadGlobalData() {
     try {
         const [pRes, lRes, gRes, cRes] = await Promise.all([
@@ -72,7 +37,7 @@ async function loadGlobalData() {
             return { title: (v[2]||'').replace(/"/g,''), country: v[5], desc: (v[9]||'').replace(/"/g,''), cleanRow: clean(line) };
         });
 
-        const tickerText = predictions.slice(-15).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ');
+        const tickerText = predictions.slice(-10).map(p => `${p.country.toUpperCase()}: ${p.title}`).join('  •  ');
         document.getElementById('ticker-content').innerText = `LIVE INTEL: ${tickerText} --- BRIDGE ONLINE --- `;
 
         const lTxt = await lRes.text();
@@ -99,12 +64,9 @@ async function loadGlobalData() {
         
         drawHeatIcons();
         setupSearch(); 
-    } catch (e) { console.error("Critical System Failure", e); }
+    } catch (e) { console.error("System Failure:", e); }
 }
 
-/**
- * 4. UI LOGIC (Heatmap, Search, and Panels)
- */
 function drawHeatIcons() {
     geoLayer.eachLayer(layer => {
         const countryKey = clean(layer.feature.properties.name);
@@ -121,7 +83,6 @@ function drawHeatIcons() {
 }
 
 function setupSearch() {
-    if (!window.GeoSearch) return setTimeout(setupSearch, 200);
     const searchControl = new window.GeoSearch.GeoSearchControl({
         provider: new window.GeoSearch.OpenStreetMapProvider(),
         style: 'bar', showMarker: false, autoClose: true
@@ -149,12 +110,7 @@ async function updateUI(name, iso) {
     if (!iso || iso === "-99") return;
     const d = worldData[iso], rawClean = clean(name);
     const lookupKey = countryAliases[rawClean] || rawClean;
-    
-    // Improved Leader Lookup fallback
-    const leader = leaderData[lookupKey] || 
-                   leaderData[rawClean] || 
-                   Object.keys(leaderData).find(k => rawClean.includes(k) || k.includes(rawClean)) || 
-                   "Intel Update Pending";
+    const leader = leaderData[lookupKey] || leaderData[rawClean] || "Establishing Intel...";
 
     document.getElementById('card-name').innerText = name;
     document.getElementById('card-leader').innerText = leader;
@@ -175,16 +131,18 @@ async function updateUI(name, iso) {
                 <div class="pred-desc">${p.desc}</div>
             </div>`).join('');
     } else panel.style.display = 'none';
-
     document.getElementById('hover-card').style.display = 'block';
 }
 
 function lockUI(n, i) { isLocked = true; updateUI(n, i); }
 function closeUI() { isLocked = false; hideUI(); geoLayer.eachLayer(l => geoLayer.resetStyle(l)); }
-function hideUI() { 
-    document.getElementById('intel-panel').style.display = 'none'; 
-    document.getElementById('hover-card').style.display = 'none'; 
-}
+function hideUI() { document.getElementById('intel-panel').style.display = 'none'; document.getElementById('hover-card').style.display = 'none'; }
 
-// Ensure DOM is ready before starting
-document.addEventListener('DOMContentLoaded', initMap);
+// BOOTSTRAP
+document.addEventListener('DOMContentLoaded', () => {
+    const bounds = L.latLngBounds(L.latLng(-85, -200), L.latLng(85, 200));
+    map = L.map('map', { zoomSnap: 0.1, attributionControl: false, zoomControl: false, maxBounds: bounds, maxBoundsViscosity: 0.5 }).setView([20, 0], 3);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', { noWrap: true }).addTo(map);
+    loadGlobalData();
+});
